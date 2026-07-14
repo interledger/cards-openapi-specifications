@@ -929,6 +929,8 @@ components:
       properties:
         definitionToken:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: credential
           description: >
             The opaque definitionToken returned by GET /terminals/onboarding for
             the form the terminal rendered. The backend verifies the token's
@@ -939,6 +941,8 @@ components:
           example: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
         data:
           type: object
+          x-oapi-codegen-extra-tags:
+            sensitive: dynamic
           description: >
             Map of submitted values keyed by FieldDefinition.key.
             Additional properties are the field values.
@@ -1063,6 +1067,8 @@ components:
           example: "2026-06-01"
         definitionToken:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: credential
           description: >
             Opaque, server-signed token representing this exact form definition
             (it embeds a hash of the served field set plus an expiry). The
@@ -1169,6 +1175,8 @@ components:
           example: SI
         registrationNumber:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: confidential
           description: |
             Business registration number issued by the merchant's
             jurisdiction (e.g. company registry number).
@@ -1177,6 +1185,8 @@ components:
           example: "1234567000"
         vatNumber:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: confidential
           description: |
             VAT identification number including the country prefix where
             applicable. Must be unique across merchants.
@@ -1212,12 +1222,16 @@ components:
           example: SI
         registrationNumber:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: confidential
           description: Updated business registration number.
           minLength: 1
           maxLength: 64
           example: "1234567000"
         vatNumber:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: confidential
           description: Updated VAT identification number.
           minLength: 1
           maxLength: 32
@@ -1262,10 +1276,14 @@ components:
           example: SI
         registrationNumber:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: confidential
           description: Business registration number issued by the local registry.
           example: "1234567000"
         vatNumber:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: confidential
           description: VAT identification number (with country prefix where applicable).
           example: SI12345678
         status:
@@ -1533,21 +1551,31 @@ components:
       properties:
         addressLineOne:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: Primary street address line (street and number).
           example: Slovenska cesta 1
         addressLineTwo:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: Secondary address line (suite, floor, unit, etc.).
           example: Floor 2
         addressLineThree:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: Tertiary address line, if needed.
         city:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: City or locality.
           example: Ljubljana
         postalCode:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: Postal / ZIP code in the local format.
           example: "1000"
         country:
@@ -1569,21 +1597,31 @@ components:
       properties:
         addressLineOne:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: Primary street address line (street and number).
           example: Slovenska cesta 1
         addressLineTwo:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: Secondary address line (suite, floor, unit, etc.).
           example: Floor 2
         addressLineThree:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: Tertiary address line, if needed.
         city:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: City or locality.
           example: Ljubljana
         postalCode:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: Postal / ZIP code in the local format.
           example: "1000"
         country:
@@ -1648,6 +1686,8 @@ components:
         walletAddress:
           type: string
           minLength: 1
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: Merchant wallet address used to create the incoming payment.
           example: https://merchant.example/.well-known/pay
         amount:
@@ -1669,6 +1709,8 @@ components:
         walletAddress:
           type: string
           minLength: 1
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: Merchant wallet address used to create the incoming payment.
           example: https://merchant.example/.well-known/pay
         expiresAt:
@@ -1738,6 +1780,8 @@ components:
         payload:
           type: string
           format: byte
+          x-oapi-codegen-extra-tags:
+            sensitive: crypto_key
           description: |
             Base64-encoded wrapped key block (TR-34–style), encrypted
             for the requesting POS device.
