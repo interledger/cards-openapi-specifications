@@ -45,12 +45,12 @@ info:
        attached to them.
 
 tags:
-  - name: Merchant
+  - name: merchant
     description: |
       Manage merchant (legal entity) records — the top-level resource that
       owns locations and terminals. Used during onboarding, KYB review and
       ongoing maintenance of merchant data.
-  - name: Location
+  - name: location
     description: |
       Manage locations belonging to a merchant. A location represents a
       physical store, branch or any logical site at which terminals can
@@ -107,7 +107,7 @@ paths:
       summary: Create merchant
       operationId: createMerchant
       tags:
-        - Merchant
+        - merchant
       description: |
         Register a new merchant (legal entity).
 
@@ -142,7 +142,7 @@ paths:
       summary: List merchants
       operationId: listMerchants
       tags:
-        - Merchant
+        - merchant
       description: |
         Return a paginated list of merchants.
 
@@ -173,7 +173,7 @@ paths:
       summary: Get merchant
       operationId: getMerchant
       tags:
-        - Merchant
+        - merchant
       description: Retrieve a single merchant by its identifier.
       responses:
         '200':
@@ -200,7 +200,7 @@ paths:
         (`PENDING → ACTIVE`, `ACTIVE ↔ SUSPENDED`). Invalid transitions
         return `409 Conflict`.
       tags:
-        - Merchant
+        - merchant
       requestBody:
         required: true
         description: Subset of merchant fields to update.
@@ -226,7 +226,7 @@ paths:
       summary: Delete merchant
       operationId: deleteMerchant
       tags:
-        - Merchant
+        - merchant
       description: |
         Soft-delete a merchant. The merchant row is marked as deleted
         (`deleted_at` is set) and will no longer appear in listings, but
@@ -252,7 +252,7 @@ paths:
       summary: Create location
       operationId: createLocation
       tags:
-        - Location
+        - location
       description: |
         Create a new location under the given merchant.
 
@@ -292,7 +292,7 @@ paths:
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Cursor'
       tags:
-        - Location
+        - location
       responses:
         '200':
           description: A page of locations belonging to the merchant.
@@ -314,7 +314,7 @@ paths:
       summary: Get location
       operationId: getLocation
       tags:
-        - Location
+        - location
       description: Retrieve a single location by its identifier.
       responses:
         '200':
@@ -333,7 +333,7 @@ paths:
       summary: Update location
       operationId: updateLocation
       tags:
-        - Location
+        - location
       description: |
         Partially update a location. Only the fields supplied in the request
         body are modified.
@@ -364,7 +364,7 @@ paths:
       summary: Delete location
       operationId: deleteLocation
       tags:
-        - Location
+        - location
       description: |
         Soft-delete a location. Terminals attached to it are also marked
         as deleted. Historical data is preserved for audit purposes.
@@ -1132,6 +1132,19 @@ components:
       default: PENDING
       example: ACTIVE
 
+    TerminalStatus:
+      type: string
+      description: |
+        Lifecycle status of a terminal.
+
+        | Value       | Meaning                                                  |
+        |-------------|----------------------------------------------------------|
+        | `ACTIVE`    | Terminal is operational and may transact.                |
+        | `SUSPENDED` | Temporarily disabled; can be reactivated.                |
+        | `REVOKED`   | Permanently disabled; certificate is revoked. Terminal state. |
+      enum: [ACTIVE, SUSPENDED, REVOKED]
+      example: ACTIVE
+
     Kernel:
       type: string
       description: |
@@ -1488,16 +1501,9 @@ components:
         kernel:
           $ref: '#/components/schemas/Kernel'
         status:
-          type: string
-          description: |
-            New lifecycle status for the terminal.
-
-            | Value       | Meaning                                                  |
-            |-------------|----------------------------------------------------------|
-            | `ACTIVE`    | Terminal is operational and may transact.                |
-            | `SUSPENDED` | Temporarily disabled; can be reactivated.                |
-            | `REVOKED`   | Permanently disabled; certificate is revoked. Terminal state. |
-          enum: [ACTIVE, SUSPENDED, REVOKED]
+          allOf:
+            - $ref: '#/components/schemas/TerminalStatus'
+          description: New lifecycle status for the terminal.
           example: SUSPENDED
 
     Terminal:
@@ -1531,11 +1537,7 @@ components:
         kernel:
           $ref: '#/components/schemas/Kernel'
         status:
-          type: string
-          x-go-type: string
-          description: Current lifecycle status of the terminal.
-          enum: [ACTIVE, SUSPENDED, REVOKED]
-          example: ACTIVE
+          $ref: '#/components/schemas/TerminalStatus'
         createdAt:
           type: string
           format: date-time

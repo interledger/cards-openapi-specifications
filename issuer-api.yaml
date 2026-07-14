@@ -67,7 +67,7 @@ components:
     Problem:
       type: object
       description: |
-        Error representation following [RFC 7807 — Problem Details for
+        Error representation following [RFC 7807 - Problem Details for
         HTTP APIs](https://www.rfc-editor.org/rfc/rfc7807).
 
         Returned for all non-2xx responses with the
