@@ -39,9 +39,13 @@ components:
       properties:
         tlvPayload:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: crypto_data
           description: The TLV payload for the authorization request
         pinBlock:
           type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: credential
           description: The PIN block for the authorization request
       required:
         - tlvPayload
