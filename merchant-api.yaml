@@ -1,0 +1,1795 @@
+openapi: 3.0.3
+info:
+  title: Interledger Merchant API
+  version: 0.1.0
+  description: |
+    The **Interledger Merchant API** is the control-plane API used to onboard
+    and manage the entities that participate in Interledger (ILP) card
+    acceptance:
+
+    - **Merchants** — the legal entities accepting payments.
+    - **Locations** — physical or logical sites operated by a merchant
+      (stores, branches, kiosks, e-commerce endpoints).
+    - **POS Terminals** — the devices that initiate card-present payment
+      transactions at a location.
+
+    ## Conventions
+
+    * All requests and responses use `application/json` (UTF-8) unless
+      explicitly stated otherwise.
+    * Timestamps are ISO 8601 / RFC 3339 in UTC (`2025-01-31T12:34:56Z`).
+    * Identifiers (`merchantId`, `locationId`, `terminalId`) are opaque
+      UUIDv4 strings issued by the server.
+    * Country codes follow **ISO 3166-1 alpha-2** (e.g. `SI`, `US`, `DE`).
+    * Collection endpoints use **opaque cursor pagination** (`limit` +
+      `cursor` query parameters; `nextCursor` in the response body).
+    * `PATCH` endpoints perform a **partial update** — only fields present
+      in the request body are modified. Omitted fields are left unchanged;
+      explicit `null` is rejected unless documented otherwise.
+    * Errors are returned as **RFC 7807 Problem Details for HTTP APIs**
+      objects (see [`Problem`](#/components/schemas/Problem)) with
+      `type`, `title`, `status`, `detail` and `instance` fields. The
+      `instance` field carries the server-assigned request correlation
+      ID and should be quoted when reporting issues.
+
+    ## Resource lifecycle
+
+    1. Create a **Merchant** (`POST /v1/merchants`). It starts in
+       `PENDING` status until activated.
+    2. Create one or more **Locations** under that merchant.
+    3. Register **Terminals** under each location, then complete the
+       onboarding flow (`POST /v1/terminals/onboard`) from the device
+       itself to submit the merchant data and link the device to its
+       merchant.
+    4. Register known **Manufacturer Models** before terminals or BDKs are
+       attached to them.
+
+tags:
+  - name: merchant
+    description: |
+      Manage merchant (legal entity) records — the top-level resource that
+      owns locations and terminals. Used during onboarding, KYB review and
+      ongoing maintenance of merchant data.
+  - name: location
+    description: |
+      Manage locations belonging to a merchant. A location represents a
+      physical store, branch or any logical site at which terminals can
+      be deployed.
+  - name: Point of Sale (POS)
+    description: |
+      Manage POS terminal records: registration metadata, EMV kernel
+      configuration and lifecycle status.
+  - name: POS Manufacturer Models
+    description: |
+      Register known POS manufacturer/model combinations used to validate
+      terminal registration and BDK storage.
+  - name: POS Onboarding
+    description: |
+      Onboarding flow executed by the POS device itself to retrieve the
+      onboarding form definition, submit the collected merchant data and
+      link the device to its merchant.
+
+paths:
+  /v1/manufacturer-models:
+    post:
+      summary: Register manufacturer model
+      operationId: registerManufacturerModel
+      tags:
+        - POS Manufacturer Models
+      description: |
+        Register a known POS manufacturer/model combination.
+
+        Terminal registration and BDK registration require the manufacturer
+        model to exist first. This endpoint creates that allowlist entry.
+      requestBody:
+        required: true
+        description: Manufacturer model attributes to register.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManufacturerModelCreate'
+      responses:
+        '201':
+          description: Manufacturer model registered successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManufacturerModel'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/merchants:
+    post:
+      summary: Create merchant
+      operationId: createMerchant
+      tags:
+        - merchant
+      description: |
+        Register a new merchant (legal entity).
+
+        The merchant is created in `PENDING` status and must be reviewed
+        and activated (typically via an out-of-band KYB process) before
+        any payments can be accepted on its behalf.
+
+        `legalName` and `country` are required; trade name and tax/registration
+        identifiers may be supplied here or added later via `PATCH`.
+      requestBody:
+        required: true
+        description: Merchant attributes to register.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantCreate'
+      responses:
+        '201':
+          description: Merchant created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Merchant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      summary: List merchants
+      operationId: listMerchants
+      tags:
+        - merchant
+      description: |
+        Return a paginated list of merchants.
+
+        Results are ordered by creation time, oldest-first (stable
+        ordering by `createdAt` ascending, then by `id`). Use the
+        `nextCursor` value from the response as the `cursor` query
+        parameter on the next call to retrieve subsequent pages.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: A page of merchants.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/merchants/{merchantId}:
+    parameters:
+      - $ref: '#/components/parameters/MerchantId'
+
+    get:
+      summary: Get merchant
+      operationId: getMerchant
+      tags:
+        - merchant
+      description: Retrieve a single merchant by its identifier.
+      responses:
+        '200':
+          description: The requested merchant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Merchant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    patch:
+      summary: Update merchant
+      operationId: updateMerchant
+      description: |
+        Partially update a merchant. Only the fields supplied in the request
+        body are modified; omitted fields keep their current value.
+
+        Status changes are validated against the allowed transitions
+        (`PENDING → ACTIVE`, `ACTIVE ↔ SUSPENDED`). Invalid transitions
+        return `409 Conflict`.
+      tags:
+        - merchant
+      requestBody:
+        required: true
+        description: Subset of merchant fields to update.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantUpdate'
+      responses:
+        '200':
+          description: Merchant updated successfully; returns the new representation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Merchant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      summary: Delete merchant
+      operationId: deleteMerchant
+      tags:
+        - merchant
+      description: |
+        Soft-delete a merchant. The merchant row is marked as deleted
+        (`deleted_at` is set) and will no longer appear in listings, but
+        historical records are preserved for audit purposes.
+
+        This operation does **not** cascade: dependent locations and
+        terminals retain their current state and must be deleted
+        explicitly via their own endpoints if required.
+      responses:
+        '204':
+          description: Merchant deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/merchants/{merchantId}/locations:
+    parameters:
+      - $ref: '#/components/parameters/MerchantId'
+    post:
+      summary: Create location
+      operationId: createLocation
+      tags:
+        - location
+      description: |
+        Create a new location under the given merchant.
+
+        A location represents a physical store, branch or any logical site
+        at which terminals can be deployed. The merchant must exist and
+        must not be deleted.
+      requestBody:
+        required: true
+        description: Location attributes to register.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationCreate'
+      responses:
+        '201':
+          description: Location created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      summary: List locations for merchant
+      operationId: listLocations
+      description: |
+        Return a paginated list of locations belonging to the given
+        merchant, oldest-first (`createdAt` ascending, then `id`
+        ascending).
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      tags:
+        - location
+      responses:
+        '200':
+          description: A page of locations belonging to the merchant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/locations/{locationId}:
+    parameters:
+      - $ref: '#/components/parameters/LocationId'
+    get:
+      summary: Get location
+      operationId: getLocation
+      tags:
+        - location
+      description: Retrieve a single location by its identifier.
+      responses:
+        '200':
+          description: The requested location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      summary: Update location
+      operationId: updateLocation
+      tags:
+        - location
+      description: |
+        Partially update a location. Only the fields supplied in the request
+        body are modified.
+
+        Updating `address` performs a *field-level* merge against the
+        existing address (see [`AddressUpdate`](#/components/schemas/AddressUpdate)).
+      requestBody:
+        required: true
+        description: Subset of location fields to update.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationUpdate'
+      responses:
+        '200':
+          description: Location updated successfully; returns the new representation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      summary: Delete location
+      operationId: deleteLocation
+      tags:
+        - location
+      description: |
+        Soft-delete a location. Terminals attached to it are also marked
+        as deleted. Historical data is preserved for audit purposes.
+      responses:
+        '204':
+          description: Location deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/locations/{locationId}/terminals:
+    parameters:
+      - $ref: '#/components/parameters/LocationId'
+    post:
+      summary: Register POS terminal
+      operationId: createTerminal
+      tags:
+        - Point of Sale (POS)
+      description: |
+        Register a new POS terminal under the given location.
+
+        This call only creates the terminal *record* (serial number,
+        manufacturer, model, EMV kernel). The supplied manufacturer/model
+        must already be registered via `POST /v1/manufacturer-models`.
+        Onboarding — submitting the merchant data and linking the device to
+        its merchant — is performed separately by the device itself via
+        [`POST /v1/terminals/onboard`](#/operations/onboardTerminal).
+
+        The terminal's `serialNumber` must be unique within the system.
+      requestBody:
+        required: true
+        description: Terminal attributes to register.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TerminalCreate'
+      responses:
+        '201':
+          description: Terminal registered successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Terminal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      summary: List terminals for location
+      operationId: listTerminals
+      tags:
+        - Point of Sale (POS)
+      description: |
+        Return a paginated list of terminals registered at the given
+        location, oldest-first (`createdAt` ascending, then `id`
+        ascending).
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: A page of terminals belonging to the location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerminalListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/terminals/{terminalId}:
+    parameters:
+      - $ref: '#/components/parameters/TerminalId'
+    get:
+      summary: Get terminal
+      operationId: getTerminal
+      tags:
+        - Point of Sale (POS)
+      description: Retrieve a single terminal by its identifier.
+      responses:
+        '200':
+          description: The requested terminal.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Terminal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      summary: Update terminal
+      operationId: updateTerminal
+      description: |
+        Partially update a terminal. Only the fields supplied in the
+        request body are modified.
+
+        Status transitions are validated:
+
+        | From      | Allowed transitions   |
+        |-----------|-----------------------|
+        | `ACTIVE`    | `SUSPENDED`, `REVOKED` |
+        | `SUSPENDED` | `ACTIVE`, `REVOKED`    |
+        | `REVOKED`   | *(terminal state)*    |
+
+        Invalid transitions return `409 Conflict`.
+      tags:
+        - Point of Sale (POS)
+      requestBody:
+        required: true
+        description: Subset of terminal fields to update. At least one field is required.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TerminalUpdate'
+      responses:
+        '200':
+          description: Terminal updated successfully; returns the new representation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Terminal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      summary: Delete terminal
+      operationId: deleteTerminal
+      tags:
+        - Point of Sale (POS)
+      description: |
+        Soft-delete a terminal. The associated certificate is revoked
+        and the device will no longer be able to authenticate. Historical
+        records are preserved for audit purposes.
+      responses:
+        '204':
+          description: Terminal deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/terminals/onboard:
+    get:
+      operationId: getTerminalOnboardingDefinition
+      summary: Retrieve the terminal onboarding form definition
+      description: >
+        Returns the set of fields, their metadata and validation rules required
+        for a terminal to render the onboarding form. Public endpoint; no
+        authentication required.
+      tags:
+        - POS Onboarding
+      responses:
+        '200':
+          description: Onboarding form definition.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingFormDefinition'
+              examples:
+                default:
+                  $ref: '#/components/examples/OnboardingFormDefinitionExample'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: submitTerminalOnboarding
+      summary: Submit onboarding data and link a terminal to a merchant
+      description: >
+        Submits merchant data collected on the terminal, validates it against the
+        onboarding field model, verifies it via ASE and links the device
+        identified by terminalSerialNumber to the resolved merchant.
+      tags:
+        - POS Onboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingSubmission'
+            examples:
+              default:
+                $ref: '#/components/examples/OnboardingSubmissionExample'
+      responses:
+        '200':
+          description: >
+            Onboarding verified and terminal linked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingResult'
+              examples:
+                linked:
+                  $ref: '#/components/examples/OnboardingResultExample'
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '404':
+          $ref: "#/components/responses/NotFound"
+        '422':
+          $ref: "#/components/responses/UnprocessableContent"
+        '500':
+          $ref: '#/components/responses/InternalError'
+  
+  /v1/transactions/authorize:
+    post:
+      summary: Authorize POS transactions
+      operationId: AuthorizeTransaction
+      tags:
+        - POS Authorization
+      description: Authorize a transaction for a POS device.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizationRequest'
+      responses:
+        '200':
+          description: POS Authorization completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  parameters:
+    MerchantId:
+      name: merchantId
+      in: path
+      required: true
+      description: Server-issued merchant identifier (UUIDv4).
+      schema:
+        type: string
+        format: uuid
+        x-go-type: string
+        example: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
+    LocationId:
+      name: locationId
+      in: path
+      required: true
+      description: Server-issued location identifier (UUIDv4).
+      schema:
+        type: string
+        format: uuid
+        x-go-type: string
+        example: 5b8b6c34-1f7d-4f6c-9b9a-2a1c0d3e4f5b
+    TerminalId:
+      name: terminalId
+      in: path
+      required: true
+      description: Server-issued terminal identifier (UUIDv4).
+      schema:
+        type: string
+        format: uuid
+        x-go-type: string
+        example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
+
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: |
+        Maximum number of items to return on this page. The server may
+        return fewer items than requested. Defaults to `25`; capped at
+        `100`.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+        example: 25
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: |
+        Opaque pagination cursor obtained from `nextCursor` of a previous
+        response. Treat as an uninterpreted string — its contents,
+        encoding and length are implementation details and may change
+        without notice. Omit on the first page.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 2048
+        example: "eyJvZmZzZXQiOjUwLCJzb3J0IjoiY3JlYXRlZEF0In0="
+
+  responses:
+    BadRequest:
+      description: Bad request (invalid JSON, invalid parameters, validation errors).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            invalidJson:
+              summary: Invalid JSON payload
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                detail: Request body is not valid JSON.
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            validationError:
+              summary: Field validation failed
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                detail: invalid country code
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            invalidCursor:
+              summary: Cursor cannot be decoded
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                detail: invalid cursor
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    Unauthorized:
+      description: Missing or invalid authentication.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            missingAuth:
+              summary: Missing credentials
+              value:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                detail: Authentication is required.
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            invalidAuth:
+              summary: Invalid or expired token
+              value:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                detail: Authentication credentials are invalid or expired.
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    Forbidden:
+      description: Not allowed to perform this action.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            insufficientPermissions:
+              summary: Not permitted
+              value:
+                type: about:blank
+                title: Forbidden
+                status: 403
+                detail: You are not allowed to perform this action.
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    NotFound:
+      description: Resource not found.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            merchantNotFound:
+              summary: Merchant does not exist
+              value:
+                type: about:blank
+                title: Not Found
+                status: 404
+                detail: resource not found
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    Conflict:
+      description: Conflict (duplicate identifiers, invalid state transition).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            duplicateResource:
+              summary: Duplicate resource
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                detail: resource already exists
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            invalidTransition:
+              summary: Invalid status transition
+              value:
+                type: about:blank
+                title: Invalid State Transition
+                status: 409
+                detail: invalid status transition
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    InternalError:
+      description: Internal server error.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            unexpected:
+              summary: Unexpected error
+              value:
+                type: about:blank
+                title: Internal Server Error
+                status: 500
+                detail: An unexpected error occurred
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    UnprocessableContent:
+      description: Unprocessable content
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            dataVerificationFailed:
+              summary: Content cannot be processed
+              value:
+                type: about:blank
+                title: Unprocessable Content
+                status: 422
+                detail: data cannot be processed by the upstream
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+  
+  examples:
+    OnboardingResultExample:
+      summary: Terminal linked
+      value:
+        status: LINKED
+        serialNumber: SN-AB12-9931
+        merchantId: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
+        linkedAt: "2026-06-01T10:15:30Z"
+    OnboardingSubmissionExample:
+      summary: Example submission
+      value:
+        definitionToken: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
+        data:
+          businessName: Interledger Foundation
+          legalEntityName: Interledger Foundation
+          registrationNumber: "12345678"
+          taxId: TAX123456789
+          merchantCategoryCode: "8398"
+          contactEmail: me@interledger.org
+          contactPhone: "+01 01 0000 0000"
+          country: US
+          addressLine1: 610 E Zack St
+          city: Tampa, Florida
+          postalCode: 33602
+          settlementCurrency: USD
+          walletAddress: $ilp.dev/007
+          acceptedTerms: true
+    
+    OnboardingFormDefinitionExample:
+      summary: Example onboarding form definition
+      value:
+        version: "2026-06-01"
+        definitionToken: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
+        title: Merchant onboarding
+        fields:
+          - key: businessName
+            label: Business name
+            type: text
+            required: true
+            placeholder: Interledger Foundation
+            order: 1
+            validation:
+              minLength: 2
+              maxLength: 120
+          - key: merchantCategoryCode
+            label: Merchant category
+            type: select
+            required: true
+            order: 5
+            options:
+              - value: "5411"
+                label: Grocery stores / supermarkets
+              - value: "5812"
+                label: Eating places / restaurants
+              - value: "8389"
+                label: Charitable and Social Service Organizations
+              - value: "5999"
+                label: Miscellaneous retail
+          - key: contactEmail
+            label: Contact email
+            type: email
+            required: true
+            placeholder: me@interledger.org
+            order: 6
+            validation:
+              format: email
+              maxLength: 254
+          - key: walletAddress
+            label: Wallet address / payment pointer
+            type: text
+            required: true
+            placeholder: $ilp.dev/007
+            order: 15
+            validation:
+              format: payment-pointer
+              maxLength: 200
+          - key: acceptedTerms
+            label: I accept the terms of service
+            type: checkbox
+            required: true
+            order: 16
+            validation:
+              mustEqual: true
+
+  schemas:
+    OnboardingResult:
+      type: object
+      required: [status, serialNumber, merchantId]
+      properties:
+        status:
+          type: string
+          description: Outcome of the onboarding submission; `ONBOARDED` when the terminal was successfully linked to the merchant.
+          example: ONBOARDED
+        serialNumber:
+          type: string
+          example: SN-AB12-9931
+        merchantId:
+          type: string
+          description: Identifier of the merchant the terminal is now linked to.
+          example: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
+        linkedAt:
+          type: string
+          format: date-time
+          example: "2026-06-01T10:15:30Z"
+
+    OnboardingSubmission:
+      type: object
+      required: [definitionToken, data]
+      properties:
+        definitionToken:
+          type: string
+          description: >
+            The opaque definitionToken returned by GET /terminals/onboarding for
+            the form the terminal rendered. The backend verifies the token's
+            signature and expiry and validates `data` against the exact field set
+            the token represents. Returns 400 if the token is missing/invalid and
+            409 if it has expired or been superseded (re-fetch the definition and
+            resubmit).
+          example: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
+        data:
+          type: object
+          description: >
+            Map of submitted values keyed by FieldDefinition.key.
+            Additional properties are the field values.
+          properties:
+            terminalSerialNumber:
+              type: string
+              description: Hardware serial number identifying the terminal.
+              example: SN-AB12-9931
+          additionalProperties: true
+          example:
+            terminalSerialNumber: SN-AB12-9931
+            businessName: Interledger Foundation
+            legalEntityName: Interledger Foundation
+            registrationNumber: "12345678"
+            taxId: TAX123456789
+            merchantCategoryCode: "8398"
+            contactEmail: me@interledger.org
+            contactPhone: "+01 01 0000 0000"
+            country: US
+            addressLine1: 610 E Zack St
+            city: Tampa, Florida
+            postalCode: 33602
+            settlementCurrency: USD
+            walletAddress: $ilp.dev/007
+            acceptedTerms: true
+
+    FieldGroup:
+      type: object
+      required: [key, label, order]
+      properties:
+        key:
+          type: string
+          example: business
+        label:
+          type: string
+          example: Business details
+        order:
+          type: integer
+          example: 1
+
+    FieldOption:
+      type: object
+      required: [value, label]
+      properties:
+        value:
+          type: string
+          example: "5411"
+        label:
+          type: string
+          example: Grocery stores / supermarkets
+ 
+    FieldValidation:
+      type: object
+      description: Declarative constraints. Clients ignore unknown keys.
+      properties:
+        minLength:
+          type: integer
+          example: 2
+        maxLength:
+          type: integer
+          example: 120
+        pattern:
+          type: string
+          description: ECMA-262 regular expression.
+          example: "^\\+?[0-9 ]{7,15}$"
+        min:
+          type: number
+        max:
+          type: number
+        format:
+          type: string
+          description: Semantic format hint.
+          example: email
+        mustEqual:
+          type: boolean
+          description: For checkbox consent fields, the value must equal this.
+    
+    FieldDefinition:
+      type: object
+      required: [key, label, type, required, order]
+      properties:
+        key:
+          type: string
+          description: Identifier of the element, camelCase. Used as the property name in the submission payload.
+          example: businessName
+        label:
+          type: string
+          example: Business name
+        description:
+          type: string
+          description: Help text shown with the field.
+        type:
+          type: string
+          enum: [text, email, tel, number, select, checkbox, date]
+          example: text
+        required:
+          type: boolean
+          example: true
+        placeholder:
+          type: string
+          example: Interledger Foundation
+        order:
+          type: integer
+          example: 1
+        defaultValue:
+          description: Optional pre-filled value (type matches `type`).
+        options:
+          type: array
+          description: Allowed choices; required when type = select.
+          items:
+            $ref: '#/components/schemas/FieldOption'
+        validation:
+          $ref: '#/components/schemas/FieldValidation'
+
+    OnboardingFormDefinition:
+      type: object
+      required: [version, definitionToken, fields]
+      properties:
+        version:
+          type: string
+          description: Version identifier of this definition (for caching/compat).
+          example: "2026-06-01"
+        definitionToken:
+          type: string
+          description: >
+            Opaque, server-signed token representing this exact form definition
+            (it embeds a hash of the served field set plus an expiry). The
+            terminal MUST send this value back unchanged in the matching
+            POST /terminals/{serialNumber}/onboarding submission so the backend
+            can validate the submitted data against the same field set that was
+            rendered. The token is stateless: the backend verifies its signature
+            and hash without any stored session. Treat as opaque — do not parse.
+          example: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
+        title:
+          type: string
+          description: Optional human-readable form title.
+          example: Merchant onboarding
+        groups:
+          type: array
+          description: Optional ordered section metadata for visual grouping.
+          items:
+            $ref: '#/components/schemas/FieldGroup'
+        fields:
+          type: array
+          description: The onboarding fields, to be rendered in ascending `order`.
+          items:
+            $ref: '#/components/schemas/FieldDefinition'
+    
+    NextCursor:
+      type: string
+      nullable: true
+      description: |
+        Opaque pagination cursor pointing to the next page of results, or
+        `null` when the current page is the last one.
+
+        Treat the value as an uninterpreted string and pass it back
+        verbatim as the `cursor` query parameter on the next request.
+      example: "eyJvZmZzZXQiOjUwLCJzb3J0IjoiY3JlYXRlZEF0In0="
+
+    LocationStatus:
+      type: string
+      description: |
+        Lifecycle status of a location.
+
+        | Value      | Meaning                                                          |
+        |------------|------------------------------------------------------------------|
+        | `ACTIVE`   | Location is operational; new terminals may transact under it.    |
+        | `INACTIVE` | Temporarily disabled; existing terminals stop accepting payments. |
+        | `CLOSED`   | Permanently closed; terminal status is forced to `REVOKED`.      |
+      enum: [ACTIVE, INACTIVE, CLOSED]
+      default: ACTIVE
+      example: ACTIVE
+
+    MerchantStatus:
+      type: string
+      description: |
+        Lifecycle status of a merchant.
+
+        | Value       | Meaning                                                              |
+        |-------------|----------------------------------------------------------------------|
+        | `PENDING`   | Created but not yet activated; awaiting KYB / compliance review.     |
+        | `ACTIVE`    | Approved and able to accept payments through its locations.          |
+        | `SUSPENDED` | Temporarily blocked from accepting payments (compliance, risk, etc.). |
+      enum: [PENDING, ACTIVE, SUSPENDED]
+      default: PENDING
+      example: ACTIVE
+
+    Kernel:
+      type: string
+      description: |
+        EMV contactless kernel implemented by the terminal. The kernel
+        defines the application-level protocol used for contactless
+        card-present transactions and is typically tied to a card scheme.
+      enum: [EMV-C-2, EMV-C-3, EMV-C-4, EMV-C-5, EMV-C-6, EMV-C-7, EMV-C-8]
+      default: EMV-C-2
+      example: EMV-C-2
+
+    MerchantCreate:
+      type: object
+      description: Payload used to register a new merchant.
+      required:
+        - legalName
+        - country
+      additionalProperties: false
+      properties:
+        legalName:
+          type: string
+          description: |
+            Registered legal name of the entity, exactly as it appears in
+            the relevant business registry.
+          minLength: 1
+          maxLength: 256
+          example: Acme Payments d.o.o.
+        tradeName:
+          type: string
+          description: |
+            Public-facing trade name ("doing business as"), if different
+            from the legal name.
+          minLength: 1
+          maxLength: 256
+          example: Acme Pay
+        country:
+          type: string
+          description: Country of incorporation as ISO 3166-1 alpha-2.
+          minLength: 2
+          maxLength: 2
+          pattern: '^[A-Z]{2}$'
+          example: SI
+        registrationNumber:
+          type: string
+          description: |
+            Business registration number issued by the merchant's
+            jurisdiction (e.g. company registry number).
+          minLength: 1
+          maxLength: 64
+          example: "1234567000"
+        vatNumber:
+          type: string
+          description: |
+            VAT identification number including the country prefix where
+            applicable. Must be unique across merchants.
+          minLength: 1
+          maxLength: 32
+          example: SI12345678
+
+    MerchantUpdate:
+      type: object
+      description: |
+        Partial update payload for a merchant. Only the fields supplied
+        are modified; omitted fields are left unchanged.
+      additionalProperties: false
+      properties:
+        legalName:
+          type: string
+          description: Updated registered legal name.
+          minLength: 1
+          maxLength: 256
+          example: Acme Payments d.o.o.
+        tradeName:
+          type: string
+          description: Updated public trade name ("doing business as").
+          minLength: 1
+          maxLength: 256
+          example: Acme Pay
+        country:
+          type: string
+          description: Updated country of incorporation as ISO 3166-1 alpha-2.
+          minLength: 2
+          maxLength: 2
+          pattern: '^[A-Z]{2}$'
+          example: SI
+        registrationNumber:
+          type: string
+          description: Updated business registration number.
+          minLength: 1
+          maxLength: 64
+          example: "1234567000"
+        vatNumber:
+          type: string
+          description: Updated VAT identification number.
+          minLength: 1
+          maxLength: 32
+          example: SI12345678
+        status:
+          allOf:
+            - $ref: '#/components/schemas/MerchantStatus'
+          description: |
+            New lifecycle status. Only allowed transitions are accepted:
+            `PENDING → ACTIVE`, `ACTIVE ↔ SUSPENDED`. Invalid
+            transitions return `409 Conflict`.
+
+    Merchant:
+      type: object
+      description: A registered merchant (legal entity) that can own locations and terminals.
+      required:
+        - id
+        - legalName
+        - country
+        - status
+        - createdAt
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-type: string
+          readOnly: true
+          description: Server-issued merchant identifier.
+          example: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
+        legalName:
+          type: string
+          description: Registered legal name of the entity.
+          example: Acme Payments d.o.o.
+        tradeName:
+          type: string
+          description: Public-facing trade name ("doing business as"), if any.
+          example: Acme Pay
+        country:
+          type: string
+          description: Country of incorporation (ISO 3166-1 alpha-2).
+          example: SI
+        registrationNumber:
+          type: string
+          description: Business registration number issued by the local registry.
+          example: "1234567000"
+        vatNumber:
+          type: string
+          description: VAT identification number (with country prefix where applicable).
+          example: SI12345678
+        status:
+          $ref: '#/components/schemas/MerchantStatus'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Timestamp at which the merchant was created (RFC 3339, UTC).
+          example: "2025-01-31T12:34:56Z"
+
+    LocationListResponse:
+      type: object
+      description: Paginated list of locations.
+      required:
+        - data
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          description: Locations on the current page, oldest-first (`createdAt` ascending, then `id` ascending).
+          items:
+            $ref: '#/components/schemas/Location'
+        nextCursor:
+          $ref: '#/components/schemas/NextCursor'
+
+    TerminalListResponse:
+      type: object
+      description: Paginated list of terminals.
+      required:
+        - data
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          description: Terminals on the current page, oldest-first (`createdAt` ascending, then `id` ascending).
+          items:
+            $ref: '#/components/schemas/Terminal'
+        nextCursor:
+          $ref: '#/components/schemas/NextCursor'
+
+    MerchantListResponse:
+      type: object
+      description: Paginated list of merchants.
+      required:
+        - data
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          description: Merchants on the current page, oldest-first (`createdAt` ascending, then `id` ascending).
+          items:
+            $ref: '#/components/schemas/Merchant'
+        nextCursor:
+          $ref: '#/components/schemas/NextCursor'
+
+    LocationCreate:
+      type: object
+      description: Payload used to create a new location under a merchant.
+      required:
+        - name
+        - address
+      properties:
+        name:
+          type: string
+          description: |
+            Human-readable name for the location, used in dashboards and
+            on receipts. Must contain at least one non-whitespace character.
+          minLength: 1
+          maxLength: 255
+          pattern: '\S'
+          example: Acme Pay — Ljubljana City Centre
+        address:
+          $ref: '#/components/schemas/Address'
+
+    LocationUpdate:
+      type: object
+      description: |
+        Partial update payload for a location. Only the fields supplied
+        are modified. The `address` object, when present, is merged
+        field-by-field with the existing address.
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          description: Updated display name for the location.
+          minLength: 1
+          maxLength: 255
+          pattern: '\S'
+          example: Acme Pay — Ljubljana Flagship
+        address:
+          $ref: '#/components/schemas/AddressUpdate'
+        status:
+          allOf:
+            - $ref: '#/components/schemas/LocationStatus'
+          description: New lifecycle status for the location.
+
+    Location:
+      type: object
+      description: A physical or logical site at which terminals can be deployed.
+      properties:
+        locationId:
+          type: string
+          format: uuid
+          x-go-type: string
+          description: Server-issued location identifier.
+          example: 5b8b6c34-1f7d-4f6c-9b9a-2a1c0d3e4f5b
+        merchantId:
+          type: string
+          format: uuid
+          x-go-type: string
+          description: Identifier of the merchant that owns this location.
+          example: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
+        name:
+          type: string
+          description: Human-readable name for the location.
+          example: Acme Pay — Ljubljana City Centre
+        address:
+          $ref: '#/components/schemas/Address'
+        status:
+          $ref: '#/components/schemas/LocationStatus'
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp at which the location was created (RFC 3339, UTC).
+          example: "2025-01-31T12:34:56Z"
+
+    ManufacturerModelCreate:
+      type: object
+      description: Payload used to register a known POS manufacturer/model combination.
+      required:
+        - manufacturer
+        - model
+      additionalProperties: false
+      properties:
+        manufacturer:
+          type: string
+          description: Manufacturer / vendor name of the device.
+          minLength: 1
+          pattern: '\S'
+          example: KaiOS
+        model:
+          type: string
+          description: Device model designation.
+          minLength: 1
+          pattern: '\S'
+          example: MobiTap Mini
+
+    ManufacturerModel:
+      type: object
+      description: Registered POS manufacturer/model combination.
+      properties:
+        manufacturerModelId:
+          type: string
+          format: uuid
+          x-go-type: string
+          description: Server-issued manufacturer model identifier.
+          example: 550e8400-e29b-41d4-a716-446655440111
+        manufacturer:
+          type: string
+          description: Manufacturer / vendor name of the device.
+          example: KaiOS
+        model:
+          type: string
+          description: Device model designation.
+          example: MobiTap Mini
+
+    TerminalCreate:
+      type: object
+      description: Payload used to register a new POS terminal under a location.
+      required:
+        - serialNumber
+        - manufacturer
+        - model
+      properties:
+        serialNumber:
+          type: string
+          description: |
+            Manufacturer-assigned serial number of the device. Must be
+            unique across all terminals in the system. Used during the
+            onboarding flow to bind the device to its terminal record.
+          example: SN-AB123456789
+        manufacturer:
+          type: string
+          description: Manufacturer / vendor name of the device.
+          example: Ingenico
+        model:
+          type: string
+          description: Device model designation.
+          example: Move/5000
+        kernel:
+          $ref: '#/components/schemas/Kernel'
+
+    TerminalUpdate:
+      type: object
+      description: |
+        Partial update payload for a terminal. At least one field must be
+        supplied.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        kernel:
+          $ref: '#/components/schemas/Kernel'
+        status:
+          type: string
+          description: |
+            New lifecycle status for the terminal.
+
+            | Value       | Meaning                                                  |
+            |-------------|----------------------------------------------------------|
+            | `ACTIVE`    | Terminal is operational and may transact.                |
+            | `SUSPENDED` | Temporarily disabled; can be reactivated.                |
+            | `REVOKED`   | Permanently disabled; certificate is revoked. Terminal state. |
+          enum: [ACTIVE, SUSPENDED, REVOKED]
+          example: SUSPENDED
+
+    Terminal:
+      type: object
+      description: A POS terminal registered under a location.
+      properties:
+        terminalId:
+          type: string
+          format: uuid
+          x-go-type: string
+          description: Server-issued terminal identifier.
+          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
+        locationId:
+          type: string
+          format: uuid
+          x-go-type: string
+          description: Identifier of the location at which the terminal is deployed.
+          example: 5b8b6c34-1f7d-4f6c-9b9a-2a1c0d3e4f5b
+        serialNumber:
+          type: string
+          description: Manufacturer-assigned device serial number.
+          example: SN-AB123456789
+        manufacturer:
+          type: string
+          description: Manufacturer / vendor name of the device.
+          example: Ingenico
+        model:
+          type: string
+          description: Device model designation.
+          example: Move/5000
+        kernel:
+          $ref: '#/components/schemas/Kernel'
+        status:
+          type: string
+          x-go-type: string
+          description: Current lifecycle status of the terminal.
+          enum: [ACTIVE, SUSPENDED, REVOKED]
+          example: ACTIVE
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp at which the terminal was registered (RFC 3339, UTC).
+          example: "2025-01-31T12:34:56Z"
+
+    AddressUpdate:
+      type: object
+      description: |
+        Partial update payload for a postal address. Only fields supplied
+        are modified; omitted fields keep their current value.
+      additionalProperties: false
+      properties:
+        addressLineOne:
+          type: string
+          description: Primary street address line (street and number).
+          example: Slovenska cesta 1
+        addressLineTwo:
+          type: string
+          description: Secondary address line (suite, floor, unit, etc.).
+          example: Floor 2
+        addressLineThree:
+          type: string
+          description: Tertiary address line, if needed.
+        city:
+          type: string
+          description: City or locality.
+          example: Ljubljana
+        postalCode:
+          type: string
+          description: Postal / ZIP code in the local format.
+          example: "1000"
+        country:
+          type: string
+          description: Country code in ISO 3166-1 alpha-2.
+          minLength: 2
+          maxLength: 2
+          pattern: '^[A-Z]{2}$'
+          example: SI
+
+    Address:
+      type: object
+      description: Postal address of a location.
+      required:
+        - addressLineOne
+        - city
+        - postalCode
+        - country
+      properties:
+        addressLineOne:
+          type: string
+          description: Primary street address line (street and number).
+          example: Slovenska cesta 1
+        addressLineTwo:
+          type: string
+          description: Secondary address line (suite, floor, unit, etc.).
+          example: Floor 2
+        addressLineThree:
+          type: string
+          description: Tertiary address line, if needed.
+        city:
+          type: string
+          description: City or locality.
+          example: Ljubljana
+        postalCode:
+          type: string
+          description: Postal / ZIP code in the local format.
+          example: "1000"
+        country:
+          type: string
+          description: Country code in ISO 3166-1 alpha-2.
+          minLength: 2
+          maxLength: 2
+          pattern: '^[A-Z]{2}$'
+          example: SI
+
+    AuthorizationAmount:
+      type: object
+      description: Open Payments amount type.
+      required:
+        - value
+        - assetCode
+        - assetScale
+      additionalProperties: false
+      properties:
+        value:
+          type: string
+          minLength: 1
+          pattern: '^[0-9]+$'
+          description: Integer amount value in the asset's minor units.
+          example: "2500"
+        assetCode:
+          type: string
+          minLength: 3
+          maxLength: 3
+          pattern: '^[A-Z]{3}$'
+          description: ISO 4217 currency code for the amount.
+          example: USD
+        assetScale:
+          type: integer
+          minimum: 0
+          maximum: 255
+          description: Number of decimal places used by the asset.
+          example: 2
+
+    AuthorizationRequest:
+      type: object
+      description: Authorization Request
+      required:
+        - terminalId
+        - requestId
+        - walletAddress
+        - amount
+      additionalProperties: false
+      properties:
+        terminalId:
+          type: string
+          format: uuid
+          x-go-type: string
+          description: Server-issued terminal identifier.
+          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
+        requestId:
+          type: string
+          format: uuid
+          x-go-type: string
+          description: Server-issued transaction identifier.
+          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
+        walletAddress:
+          type: string
+          minLength: 1
+          description: Merchant wallet address used to create the incoming payment.
+          example: https://merchant.example/.well-known/pay
+        amount:
+          $ref: '#/components/schemas/AuthorizationAmount'
+
+    AuthorizationIncomingPayment:
+      type: object
+      description: Incoming payment transaction.
+      required:
+        - id
+        - paymentPointerUrl
+        - expiresAt
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          description: Incoming payment resource identifier.
+          example: https://merchant.example/incoming-payments/4fbd8d6a-4d30-4c6a-82e8-1d6f75c6c7bf
+        walletAddress:
+          type: string
+          minLength: 1
+          description: Merchant wallet address used to create the incoming payment.
+          example: https://merchant.example/.well-known/pay
+        expiresAt:
+          type: string
+          format: date-time
+          description: Expiry timestamp for the incoming payment.
+          example: "2026-05-29T12:34:56Z"
+        
+    AuthorizationResponseData:
+      type: object
+      description: Authorization data produced by completed authorization legs.
+      required:
+        - incomingPayment
+      additionalProperties: false
+      properties:
+        incomingPayment:
+          $ref: '#/components/schemas/AuthorizationIncomingPayment'
+
+    AuthorizationTransactionResponse:
+      type: object
+      description: POS-facing transaction response body.
+      required:
+        - timestamp
+        - terminalId
+        - requestId
+      additionalProperties: false
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Response timestamp.
+          example: "2026-05-29T12:34:56Z"
+        terminalId:
+          type: string
+          description: POS terminal identifier from the request.
+          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
+        requestId:
+          type: string
+          description: POS request identifier from the request.
+          example: req-20260529-000001
+        data:
+          $ref: '#/components/schemas/AuthorizationResponseData'
+
+    AuthorizationResponse:
+      type: object
+      description: POS-facing authorization response envelope.
+      required:
+        - transactionResponse
+      additionalProperties: false
+      properties:
+        transactionResponse:
+          $ref: '#/components/schemas/AuthorizationTransactionResponse'
+
+    WrappedKeys:
+      type: object
+      description: |
+        Operational keys delivered to the POS in a wrapped (encrypted)
+        key block, suitable for direct loading into the device's secure
+        element.
+      properties:
+        scheme:
+          type: string
+          example: TR-34
+          description: |
+            Identifier of the key-wrapping scheme used to protect the
+            payload (e.g. `TR-34`).
+        payload:
+          type: string
+          format: byte
+          description: |
+            Base64-encoded wrapped key block (TR-34–style), encrypted
+            for the requesting POS device.
+
+    Problem:
+      type: object
+      description: |
+        Error representation following [RFC 7807 — Problem Details for
+        HTTP APIs](https://www.rfc-editor.org/rfc/rfc7807).
+
+        Returned for all non-2xx responses with the
+        `application/problem+json` media type. Clients should use `status`
+        and `title` for programmatic handling and surface `detail` for
+        diagnostics. The `instance` field carries the server-assigned
+        request correlation ID and should be quoted when reporting issues.
+      required:
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          description: |
+            URI reference identifying the problem type. Defaults to
+            `about:blank`, which means the problem has no additional
+            semantics beyond `title` and `status`.
+          default: about:blank
+          example: about:blank
+        title:
+          type: string
+          description: |
+            Short, human-readable summary of the problem type. For
+            `about:blank`, this is the standard HTTP reason phrase for
+            `status` (e.g. `Bad Request`, `Not Found`).
+          example: Bad Request
+        status:
+          type: integer
+          format: int32
+          minimum: 100
+          maximum: 599
+          description: HTTP status code generated by the origin server for this occurrence.
+          example: 400
+        detail:
+          type: string
+          description: |
+            Human-readable explanation specific to this occurrence of the
+            problem. Safe to log; not intended for end-user display.
+          example: invalid country code
+        instance:
+          type: string
+          description: |
+            Server-assigned correlation identifier for this request
+            (the request ID). Include it when contacting support to
+            enable log lookups.
+          example: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
