@@ -43,7 +43,7 @@ paths:
           schema:
             type: string
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
@@ -97,9 +97,17 @@ components:
       type: object
       additionalProperties: false
       properties:
+        actor:
+          type: string
+          enum:
+            - USER
+            - ISSUER
+          description: The actor that performed the unlock
         reason:
           type: string
           description: Optional human-readable reason for unlocking the card
+      required:
+        - actor
 
     Problem:
       type: object
