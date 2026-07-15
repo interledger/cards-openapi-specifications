@@ -5,29 +5,41 @@ info:
   description: |
     To be written
 
+tags:
+  - name: CardManagement
+    description: Operations for managing the lifecycle of a card, such as locking, unlocking, and deleting.
 
 paths:
-  /v1/authorize:
+  /v1/card/{cardId}/lock:
     post:
-      summary: Authorize a payment
-      operationId: authorizePayment
+      summary: Lock a card
+      operationId: lockCard
+      tags:
+        - CardManagement
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          description: The unique identifier of the card to lock
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AuthorizeRequest'
+              $ref: '#/components/schemas/LockCardRequest'
       responses:
-        '200':
-          description: Payment authorized successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthorizeResponse'
+        '204':
+          description: Card locked successfully
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -35,6 +47,8 @@ paths:
     post:
       summary: Unlock a card
       operationId: unlockCard
+      tags:
+        - CardManagement
       parameters:
         - name: cardId
           in: path
@@ -51,6 +65,41 @@ paths:
       responses:
         '204':
           description: Card unlocked successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/card/{cardId}:
+    delete:
+      summary: Delete a card
+      operationId: deleteCard
+      tags:
+        - CardManagement
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          description: The unique identifier of the card to delete
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteCardRequest'
+      responses:
+        '204':
+          description: Card deleted successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -62,36 +111,22 @@ paths:
 
 components:
   schemas:
-    AuthorizeRequest:
+    LockCardRequest:
       type: object
       additionalProperties: false
       properties:
-        tlvPayload:
+        actor:
           type: string
-          x-oapi-codegen-extra-tags:
-            sensitive: crypto_data
-          description: The TLV payload for the authorization request
-        pinBlock:
+          enum:
+            - USER
+            - ISSUER
+          description: The actor that performed the lock
+        reason:
           type: string
-          x-oapi-codegen-extra-tags:
-            sensitive: credential
-          description: The PIN block for the authorization request
+          description: Human-readable reason for locking the card
       required:
-        - tlvPayload
-
-    AuthorizeResponse:
-      type: object
-      additionalProperties: false
-      properties:
-        authorizationId:
-          type: string
-          description: The unique identifier for the authorized payment
-        status:
-          type: string
-          description: The status of the authorization (e.g., "authorized", "declined")
-      required:
-        - authorizationId
-        - status
+        - actor
+        - reason
 
     UnlockCardRequest:
       type: object
@@ -108,6 +143,16 @@ components:
           description: Optional human-readable reason for unlocking the card
       required:
         - actor
+
+    DeleteCardRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          description: Human-readable reason for deleting the card
+      required:
+        - reason
 
     Problem:
       type: object
