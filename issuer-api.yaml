@@ -31,6 +31,35 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /v1/card/{cardId}/unlock:
+    post:
+      summary: Unlock a card
+      operationId: unlockCard
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          description: The unique identifier of the card to unlock
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnlockCardRequest'
+      responses:
+        '204':
+          description: Card unlocked successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   schemas:
     AuthorizeRequest:
@@ -63,6 +92,14 @@ components:
       required:
         - authorizationId
         - status
+
+    UnlockCardRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          description: Optional human-readable reason for unlocking the card
 
     Problem:
       type: object
@@ -125,6 +162,18 @@ components:
             $ref: '#/components/schemas/Problem'
     Unauthorized:
       description: Unauthorized
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Not found
       content:
         application/problem+json:
           schema:
