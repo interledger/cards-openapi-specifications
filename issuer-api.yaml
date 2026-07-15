@@ -213,27 +213,57 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Bad Request
+            status: 400
+            detail: invalid country code
+            instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
     Unauthorized:
       description: Unauthorized
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Unauthorized
+            status: 401
+            detail: authentication credentials are missing or invalid
+            instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
     Forbidden:
       description: Forbidden
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Forbidden
+            status: 403
+            detail: you do not have permission to perform this action
+            instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
     NotFound:
       description: Not found
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Not Found
+            status: 404
+            detail: card not found
+            instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
     InternalServerError:
       description: Internal server error
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Internal Server Error
+            status: 500
+            detail: an unexpected error occurred
+            instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
