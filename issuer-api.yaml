@@ -3,13 +3,271 @@ info:
   title: Interledger Issuer API
   version: 0.1.0
   description: |
-    To be written
+    The Interledger Issuer API enables card issuers to manage the operational lifecycle of payment cards.
+    This API provides a set of endpoints that allow authorized issuers to perform state-changing operations
+    on cards issued within the Interledger ecosystem.
 
 tags:
+  - name: AsymmetricKeys
+    description: Operations for generating and managing CA and issuer asymmetric key pairs.
+  - name: CardProgram
+    description: Operations for managing card programs (scheme-level defaults shared across cards).
+  - name: CardPersonalization
+    description: Operations for card batch creation and EMV personalization via the HSM adapter.
   - name: CardManagement
     description: Operations for managing the lifecycle of a card, such as locking, unlocking, and deleting.
 
 paths:
+  /v1/keypair/generate:
+    post:
+      summary: Generate an asymmetric key pair
+      operationId: generateKeypair
+      tags:
+        - AsymmetricKeys
+      description: |
+        Generates a CA or issuer asymmetric key pair via the HSM adapter.
+
+        - To generate a CA private key, supply only `key_code`.
+        - To generate an issuer certificate signed by a CA, supply `key_code`, `issuer_signing_key`, and `certificate`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateKeypairRequest'
+            examples:
+              ca_private_key:
+                summary: CA private key (no certificate)
+                value:
+                  key_code: ca1
+              issuer_cert:
+                summary: Issuer certificate signed by CA
+                value:
+                  key_code: i am issuer
+                  issuer_signing_key: ca1
+                  certificate:
+                    issuer_code: alias
+                    expiry_date: '2023-01-01'
+                    subject:
+                      common_name: CN
+                      organization_unit: OU
+                      organization_name: O
+                      locality_name: L
+                      state_name: ST
+                      country: C
+      responses:
+        '201':
+          description: Key pair generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsymmetricKey'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/cardprogram:
+    post:
+      summary: Create a card program
+      operationId: createCardProgram
+      tags:
+        - CardProgram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardProgramRequest'
+      responses:
+        '201':
+          description: Card program created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardProgram'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Conflict - a card program with this program_code already exists
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Update a card program
+      operationId: updateCardProgram
+      tags:
+        - CardProgram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardProgramRequest'
+      responses:
+        '200':
+          description: Card program updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardProgram'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      summary: List all card programs
+      operationId: listCardPrograms
+      tags:
+        - CardProgram
+      responses:
+        '200':
+          description: List of card programs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CardProgram'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/cardprogram/{programId}:
+    get:
+      summary: Get a card program by ID
+      operationId: getCardProgram
+      tags:
+        - CardProgram
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          description: The unique identifier of the card program
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Card program found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardProgram'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/personalise/cardbatch:
+    post:
+      summary: Create a new card batch
+      operationId: createCardBatch
+      tags:
+        - CardPersonalization
+      description: Creates a batch of staged cards for the given wallet addresses under the specified card program.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardBatchRequest'
+            example:
+              request_id: 550e8400-e29b-41d4-a716-446655440000
+              card_program_id: 550e8400-e29b-41d4-a716-446655440001
+              card_program_program_code: ILF_MASTERCARD_EUR
+              description: New batch for 2026-03-01
+              wallet_addresses:
+                - p1@ilf.org
+                - p2@ilf.org
+                - p3@ilf.org
+      responses:
+        '201':
+          description: Card batch created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardBatch'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Conflict - a batch with this request_id already exists
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/personalise/cardbatch/{request_id}/personalise:
+    post:
+      summary: Personalise cards in a batch
+      operationId: personaliseCardBatch
+      tags:
+        - CardPersonalization
+      description: |
+        Triggers EMV personalisation for all staged cards in the batch via the HSM adapter.
+        Performs the following operations per card:
+
+        1. `generatePan(StagedCardId, CardProgram)` - generate and assign a PAN
+        2. `generateICC(StagedCardId, CardProgram, IssuerCertificate)` - generate ICC key pair and certificate
+        3. `generateEMVCMAC(StagedCardId)` - generate AES-128 AES-CMAC/EMV cryptogram key
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          description: The request ID of the card batch to personalise
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Personalisation accepted and in progress
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict - batch is not in AWAITING_PERSONALIZING state
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /v1/card/{cardId}/lock:
     post:
       summary: Lock a card
@@ -111,6 +369,305 @@ paths:
 
 components:
   schemas:
+    GenerateKeypairRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - key_code
+      properties:
+        key_code:
+          type: string
+          description: Unique code identifying this key (e.g. 'ca1', 'issuer1')
+          example: ca1
+        issuer_signing_key:
+          type: string
+          description: key_code of the CA key used to sign the issuer certificate. Required when generating an issuer key pair.
+          example: ca1
+        certificate:
+          $ref: '#/components/schemas/CertificateRequest'
+
+    CertificateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - issuer_code
+        - expiry_date
+        - subject
+      properties:
+        issuer_code:
+          type: string
+          description: Alias / issuer code for the certificate
+          example: alias
+        expiry_date:
+          type: string
+          format: date
+          description: Certificate expiry date (ISO 8601)
+          example: '2028-01-01'
+        subject:
+          $ref: '#/components/schemas/CertificateSubject'
+
+    CertificateSubject:
+      type: object
+      additionalProperties: false
+      required:
+        - common_name
+        - organization_unit
+        - organization_name
+        - locality_name
+        - state_name
+        - country
+      properties:
+        common_name:
+          type: string
+          example: MC
+        organization_unit:
+          type: string
+          example: MC
+        organization_name:
+          type: string
+          example: MC
+        locality_name:
+          type: string
+          example: MC
+        state_name:
+          type: string
+          example: MC
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+          description: ISO 3166-1 alpha-2 country code
+          example: NL
+
+    AsymmetricKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Generated primary key
+        key_code:
+          type: string
+          description: Unique code identifying this key
+        certificate_serial:
+          type: string
+          description: Certificate serial number (present when a certificate was generated)
+
+    CardProgramRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - program_code
+        - signing_asymmetric_key_id
+        - scheme
+        - currency_code
+        - currency_exponent
+        - issuer_country_code
+        - application_label
+        - application_priority_ind
+        - application_version_number
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Present on PATCH to identify the program to update
+        program_code:
+          type: string
+          maxLength: 20
+          example: ILF_MASTERCARD_EUR
+        signing_asymmetric_key_id:
+          type: string
+          format: uuid
+          description: FK to the issuer asymmetric key used for signing
+        scheme:
+          type: string
+          enum:
+            - MASTERCARD
+            - VISA
+          example: MASTERCARD
+        currency_code:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: ISO 4217 currency code (EMV Tag 9F42)
+          example: EUR
+        currency_exponent:
+          type: integer
+          description: Currency exponent (EMV Tag 9F44)
+          example: 2
+        issuer_country_code:
+          type: string
+          description: ISO 3166-1 alpha-2/3 country code (EMV Tag 5F28)
+          example: NL
+        language_preference:
+          type: string
+          maxLength: 8
+          description: Language preference (EMV Tag 5F2D)
+          default: en
+          example: en
+        issuer_code_table_index:
+          type: integer
+          description: Issuer code table index (EMV Tag 9F11)
+          default: 1
+        application_label:
+          type: string
+          maxLength: 16
+          description: Application label (EMV Tag 50)
+          example: INTERLEDGER
+        application_preferred_name:
+          type: string
+          maxLength: 16
+          description: Application preferred name (EMV Tag 9F12)
+          example: Interledger
+        application_priority_ind:
+          type: integer
+          description: Application priority indicator (EMV Tag 87)
+          example: 1
+        application_version_number:
+          type: integer
+          description: Application version number (EMV Tag 9F08)
+          example: 1
+        auc_domestic_goods:
+          type: boolean
+          default: true
+        auc_international_goods:
+          type: boolean
+          default: true
+        auc_domestic_services:
+          type: boolean
+          default: true
+        auc_international_services:
+          type: boolean
+          default: true
+        auc_atm:
+          type: boolean
+          default: false
+        auc_non_atm_terminals:
+          type: boolean
+          default: true
+        auc_domestic_cash:
+          type: boolean
+          default: false
+        auc_international_cash:
+          type: boolean
+          default: false
+        auc_domestic_cashback:
+          type: boolean
+          default: false
+        auc_international_cashback:
+          type: boolean
+          default: false
+        iac_default:
+          type: string
+          description: Issuer Action Code - Default (EMV Tag 9F0D), hex-encoded bytes
+          example: FC50A08000
+        iac_denial:
+          type: string
+          description: Issuer Action Code - Denial (EMV Tag 9F0E), hex-encoded bytes
+          example: '0000000000'
+        iac_online:
+          type: string
+          description: Issuer Action Code - Online (EMV Tag 9F0F), hex-encoded bytes
+          example: FC50A08000
+        cvm_list:
+          type: string
+          description: CVM List (EMV Tag 8E), hex-encoded bytes. Rule 0x0200 = Enciphered PIN verified online.
+          example: '0000000000000000420200'
+        pdol:
+          type: string
+          description: Processing Options DOL (EMV Tag 9F38), hex-encoded bytes
+          example: 9F33039F1A02
+        cdol1:
+          type: string
+          description: Card Risk Management DOL 1 (EMV Tag 8C), hex-encoded bytes
+        cdol2:
+          type: string
+          description: Card Risk Management DOL 2 - contact only (EMV Tag 8D), hex-encoded bytes
+        aip_contact:
+          type: string
+          description: Application Interchange Profile for contact (EMV Tag 82), hex-encoded bytes
+          example: '5800'
+        aip_contactless:
+          type: string
+          description: Application Interchange Profile for contactless (EMV Tag 82), hex-encoded bytes
+          example: '5800'
+
+    CardProgram:
+      allOf:
+        - $ref: '#/components/schemas/CardProgramRequest'
+        - type: object
+          required:
+            - id
+            - created_at
+            - updated_at
+          properties:
+            id:
+              type: string
+              format: uuid
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    CardBatchRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - request_id
+        - card_program_id
+        - card_program_program_code
+        - description
+        - wallet_addresses
+      properties:
+        request_id:
+          type: string
+          format: uuid
+          description: Client-supplied idempotency key for this batch
+        card_program_id:
+          type: string
+          format: uuid
+          description: FK to the card program
+        card_program_program_code:
+          type: string
+          maxLength: 20
+          description: Denormalised program code for readability
+          example: ILF_MASTERCARD_EUR
+        description:
+          type: string
+          maxLength: 250
+          example: New batch for 2026-03-01
+        wallet_addresses:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: List of wallet addresses to create cards for
+          example:
+            - p1@ilf.org
+            - p2@ilf.org
+            - p3@ilf.org
+
+    CardBatch:
+      allOf:
+        - $ref: '#/components/schemas/CardBatchRequest'
+        - type: object
+          required:
+            - id
+            - state
+          properties:
+            id:
+              type: string
+              format: uuid
+            state:
+              type: string
+              enum:
+                - AWAITING_PERSONALIZING
+                - IN_PROGRESS
+                - COMPLETED
+              description: Current lifecycle state of the batch
+
     LockCardRequest:
       type: object
       additionalProperties: false
