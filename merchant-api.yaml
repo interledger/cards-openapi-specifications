@@ -13,6 +13,8 @@ info:
     - **POS Terminals** — the devices that initiate card-present payment
       transactions at a location.
 
+    At the same time, Merchant API acts as an Open Payments client to facilitate payments.
+
     ## Conventions
 
     * All requests and responses use `application/json` (UTF-8) unless
