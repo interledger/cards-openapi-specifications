@@ -43,18 +43,18 @@ paths:
               issuer_cert:
                 summary: Issuer certificate signed by CA
                 value:
-                  key_code: i am issuer
+                  key_code: issuer1
                   issuer_signing_key: ca1
                   certificate:
                     issuer_code: alias
-                    expiry_date: '2023-01-01'
+                    expiry_date: '2028-01-01'
                     subject:
-                      common_name: CN
-                      organization_unit: OU
-                      organization_name: O
-                      locality_name: L
-                      state_name: ST
-                      country: C
+                      common_name: MC
+                      organization_unit: MC
+                      organization_name: MC
+                      locality_name: MC
+                      state_name: MC
+                      country: NL
       responses:
         '201':
           description: Key pair generated successfully
@@ -83,6 +83,28 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CardProgramRequest'
+            examples:
+              interledger_wallet_eur:
+                summary: Interledger Wallet EUR program
+                value:
+                  program_code: INTERLEDGER_WALLET_EUR
+                  signing_asymmetric_key_id: 550e8400-e29b-41d4-a716-446655440002
+                  scheme: INTERLEDGER
+                  currency_code: EUR
+                  currency_exponent: 2
+                  issuer_country_code: NL
+                  language_preference: en
+                  application_label: INTERLEDGER
+                  application_preferred_name: Interledger
+                  application_priority_ind: 1
+                  application_version_number: 1
+                  iac_default: FC50A08000
+                  iac_denial: '0000000000'
+                  iac_online: FC50A08000
+                  cvm_list: '0000000000000000420200'
+                  pdol: 9F33039F1A02
+                  aip_contact: '5800'
+                  aip_contactless: '5800'
       responses:
         '201':
           description: Card program created successfully
@@ -102,34 +124,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    patch:
-      summary: Update a card program
-      operationId: updateCardProgram
-      tags:
-        - CardProgram
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CardProgramRequest'
-      responses:
-        '200':
-          description: Card program updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CardProgram'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
     get:
@@ -182,6 +176,64 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Update a card program
+      operationId: updateCardProgram
+      tags:
+        - CardProgram
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          description: The unique identifier of the card program
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardProgramRequest'
+            examples:
+              interledger_wallet_eur:
+                summary: Update an existing Interledger EUR program
+                value:
+                  program_code: INTERLEDGER_WALLET_EUR
+                  signing_asymmetric_key_id: 550e8400-e29b-41d4-a716-446655440002
+                  scheme: INTERLEDGER
+                  currency_code: EUR
+                  currency_exponent: 2
+                  issuer_country_code: NL
+                  language_preference: en
+                  application_label: INTERLEDGER
+                  application_preferred_name: Interledger
+                  application_priority_ind: 1
+                  application_version_number: 1
+                  iac_default: FC50A08000
+                  iac_denial: '0000000000'
+                  iac_online: FC50A08000
+                  cvm_list: '0000000000000000420200'
+                  pdol: 9F33039F1A02
+                  aip_contact: '5800'
+                  aip_contactless: '5800'
+      responses:
+        '200':
+          description: Card program updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardProgram'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/personalise/cardbatch:
     post:
@@ -196,15 +248,18 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CardBatchRequest'
-            example:
-              request_id: 550e8400-e29b-41d4-a716-446655440000
-              card_program_id: 550e8400-e29b-41d4-a716-446655440001
-              card_program_program_code: ILF_MASTERCARD_EUR
-              description: New batch for 2026-03-01
-              wallet_addresses:
-                - p1@ilf.org
-                - p2@ilf.org
-                - p3@ilf.org
+            examples:
+              new_batch:
+                summary: New card batch for three wallet addresses
+                value:
+                  request_id: 550e8400-e29b-41d4-a716-446655440000
+                  card_program_id: 550e8400-e29b-41d4-a716-446655440001
+                  card_program_program_code: INTERLEDGER_WALLET_EUR
+                  description: New batch for 2026-03-01
+                  wallet_addresses:
+                    - p1@ilf.org
+                    - p2@ilf.org
+                    - p3@ilf.org
       responses:
         '201':
           description: Card batch created successfully
@@ -287,6 +342,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LockCardRequest'
+            examples:
+              user_lock:
+                summary: Card locked by the user
+                value:
+                  actor: USER
+                  reason: Card reported lost
       responses:
         '204':
           description: Card locked successfully
@@ -320,6 +381,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/UnlockCardRequest'
+            examples:
+              issuer_unlock:
+                summary: Card unlocked by the issuer
+                value:
+                  actor: ISSUER
+                  reason: Fraud review cleared
       responses:
         '204':
           description: Card unlocked successfully
@@ -353,6 +420,11 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/DeleteCardRequest'
+            examples:
+              delete:
+                summary: Delete a card
+                value:
+                  reason: Account closed at user request
       responses:
         '204':
           description: Card deleted successfully
@@ -378,11 +450,9 @@ components:
         key_code:
           type: string
           description: Unique code identifying this key (e.g. 'ca1', 'issuer1')
-          example: ca1
         issuer_signing_key:
           type: string
           description: key_code of the CA key used to sign the issuer certificate. Required when generating an issuer key pair.
-          example: ca1
         certificate:
           $ref: '#/components/schemas/CertificateRequest'
 
@@ -397,12 +467,10 @@ components:
         issuer_code:
           type: string
           description: Alias / issuer code for the certificate
-          example: alias
         expiry_date:
           type: string
           format: date
           description: Certificate expiry date (ISO 8601)
-          example: '2028-01-01'
         subject:
           $ref: '#/components/schemas/CertificateSubject'
 
@@ -419,25 +487,19 @@ components:
       properties:
         common_name:
           type: string
-          example: MC
         organization_unit:
           type: string
-          example: MC
         organization_name:
           type: string
-          example: MC
         locality_name:
           type: string
-          example: MC
         state_name:
           type: string
-          example: MC
         country:
           type: string
           minLength: 2
           maxLength: 2
           description: ISO 3166-1 alpha-2 country code
-          example: NL
 
     AsymmetricKey:
       type: object
@@ -467,14 +529,9 @@ components:
         - application_priority_ind
         - application_version_number
       properties:
-        id:
-          type: string
-          format: uuid
-          description: Present on PATCH to identify the program to update
         program_code:
           type: string
           maxLength: 20
-          example: ILF_MASTERCARD_EUR
         signing_asymmetric_key_id:
           type: string
           format: uuid
@@ -482,29 +539,23 @@ components:
         scheme:
           type: string
           enum:
-            - MASTERCARD
-            - VISA
-          example: MASTERCARD
+            - INTERLEDGER
         currency_code:
           type: string
           minLength: 3
           maxLength: 3
           description: ISO 4217 currency code (EMV Tag 9F42)
-          example: EUR
         currency_exponent:
           type: integer
           description: Currency exponent (EMV Tag 9F44)
-          example: 2
         issuer_country_code:
           type: string
           description: ISO 3166-1 alpha-2/3 country code (EMV Tag 5F28)
-          example: NL
         language_preference:
           type: string
           maxLength: 8
           description: Language preference (EMV Tag 5F2D)
           default: en
-          example: en
         issuer_code_table_index:
           type: integer
           description: Issuer code table index (EMV Tag 9F11)
@@ -513,20 +564,16 @@ components:
           type: string
           maxLength: 16
           description: Application label (EMV Tag 50)
-          example: INTERLEDGER
         application_preferred_name:
           type: string
           maxLength: 16
           description: Application preferred name (EMV Tag 9F12)
-          example: Interledger
         application_priority_ind:
           type: integer
           description: Application priority indicator (EMV Tag 87)
-          example: 1
         application_version_number:
           type: integer
           description: Application version number (EMV Tag 9F08)
-          example: 1
         auc_domestic_goods:
           type: boolean
           default: true
@@ -560,23 +607,18 @@ components:
         iac_default:
           type: string
           description: Issuer Action Code - Default (EMV Tag 9F0D), hex-encoded bytes
-          example: FC50A08000
         iac_denial:
           type: string
           description: Issuer Action Code - Denial (EMV Tag 9F0E), hex-encoded bytes
-          example: '0000000000'
         iac_online:
           type: string
           description: Issuer Action Code - Online (EMV Tag 9F0F), hex-encoded bytes
-          example: FC50A08000
         cvm_list:
           type: string
           description: CVM List (EMV Tag 8E), hex-encoded bytes. Rule 0x0200 = Enciphered PIN verified online.
-          example: '0000000000000000420200'
         pdol:
           type: string
           description: Processing Options DOL (EMV Tag 9F38), hex-encoded bytes
-          example: 9F33039F1A02
         cdol1:
           type: string
           description: Card Risk Management DOL 1 (EMV Tag 8C), hex-encoded bytes
@@ -586,11 +628,9 @@ components:
         aip_contact:
           type: string
           description: Application Interchange Profile for contact (EMV Tag 82), hex-encoded bytes
-          example: '5800'
         aip_contactless:
           type: string
           description: Application Interchange Profile for contactless (EMV Tag 82), hex-encoded bytes
-          example: '5800'
 
     CardProgram:
       allOf:
@@ -633,21 +673,15 @@ components:
           type: string
           maxLength: 20
           description: Denormalised program code for readability
-          example: ILF_MASTERCARD_EUR
         description:
           type: string
           maxLength: 250
-          example: New batch for 2026-03-01
         wallet_addresses:
           type: array
           minItems: 1
           items:
             type: string
           description: List of wallet addresses to create cards for
-          example:
-            - p1@ilf.org
-            - p2@ilf.org
-            - p3@ilf.org
 
     CardBatch:
       allOf:

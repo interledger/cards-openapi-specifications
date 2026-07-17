@@ -47,12 +47,12 @@ info:
        attached to them.
 
 tags:
-  - name: merchant
+  - name: Merchant
     description: |
       Manage merchant (legal entity) records — the top-level resource that
       owns locations and terminals. Used during onboarding, KYB review and
       ongoing maintenance of merchant data.
-  - name: location
+  - name: Location
     description: |
       Manage locations belonging to a merchant. A location represents a
       physical store, branch or any logical site at which terminals can
@@ -109,7 +109,7 @@ paths:
       summary: Create merchant
       operationId: createMerchant
       tags:
-        - merchant
+        - Merchant
       description: |
         Register a new merchant (legal entity).
 
@@ -144,7 +144,7 @@ paths:
       summary: List merchants
       operationId: listMerchants
       tags:
-        - merchant
+        - Merchant
       description: |
         Return a paginated list of merchants.
 
@@ -175,7 +175,7 @@ paths:
       summary: Get merchant
       operationId: getMerchant
       tags:
-        - merchant
+        - Merchant
       description: Retrieve a single merchant by its identifier.
       responses:
         '200':
@@ -202,7 +202,7 @@ paths:
         (`PENDING → ACTIVE`, `ACTIVE ↔ SUSPENDED`). Invalid transitions
         return `409 Conflict`.
       tags:
-        - merchant
+        - Merchant
       requestBody:
         required: true
         description: Subset of merchant fields to update.
@@ -228,7 +228,7 @@ paths:
       summary: Delete merchant
       operationId: deleteMerchant
       tags:
-        - merchant
+        - Merchant
       description: |
         Soft-delete a merchant. The merchant row is marked as deleted
         (`deleted_at` is set) and will no longer appear in listings, but
@@ -254,7 +254,7 @@ paths:
       summary: Create location
       operationId: createLocation
       tags:
-        - location
+        - Location
       description: |
         Create a new location under the given merchant.
 
@@ -294,7 +294,7 @@ paths:
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Cursor'
       tags:
-        - location
+        - Location
       responses:
         '200':
           description: A page of locations belonging to the merchant.
@@ -316,7 +316,7 @@ paths:
       summary: Get location
       operationId: getLocation
       tags:
-        - location
+        - Location
       description: Retrieve a single location by its identifier.
       responses:
         '200':
@@ -335,7 +335,7 @@ paths:
       summary: Update location
       operationId: updateLocation
       tags:
-        - location
+        - Location
       description: |
         Partially update a location. Only the fields supplied in the request
         body are modified.
@@ -366,7 +366,7 @@ paths:
       summary: Delete location
       operationId: deleteLocation
       tags:
-        - location
+        - Location
       description: |
         Soft-delete a location. Terminals attached to it are also marked
         as deleted. Historical data is preserved for audit purposes.
