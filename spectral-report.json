@@ -1,0 +1,1280 @@
+[
+	{
+		"code": "oas3-api-servers",
+		"path": [],
+		"message": "OpenAPI \"servers\" must be present and non-empty array.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 0,
+				"character": 0
+			},
+			"end": {
+				"line": 1875,
+				"character": 55
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "servers-defined",
+		"path": [],
+		"message": "The spec must declare at least one server URL.",
+		"severity": 0,
+		"range": {
+			"start": {
+				"line": 0,
+				"character": 0
+			},
+			"end": {
+				"line": 1875,
+				"character": 55
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "info-contact",
+		"path": [
+			"info"
+		],
+		"message": "Info object must have \"contact\" object.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1,
+				"character": 5
+			},
+			"end": {
+				"line": 47,
+				"character": 0
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "auth-handling-documented",
+		"path": [
+			"info",
+			"description"
+		],
+		"message": "info.description does not mention how authentication or authorization is handled. Document the delegated-auth model.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 4,
+				"character": 15
+			},
+			"end": {
+				"line": 47,
+				"character": 0
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "tag-naming-convention",
+		"path": [
+			"tags",
+			"2",
+			"name"
+		],
+		"message": "Tag \"Point of Sale (POS)\" should be PascalCase (e.g. Merchant, Location, PointOfSale, PosOnboarding).",
+		"severity": 0,
+		"range": {
+			"start": {
+				"line": 59,
+				"character": 10
+			},
+			"end": {
+				"line": 59,
+				"character": 29
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "tag-naming-convention",
+		"path": [
+			"tags",
+			"3",
+			"name"
+		],
+		"message": "Tag \"POS Manufacturer Models\" should be PascalCase (e.g. Merchant, Location, PointOfSale, PosOnboarding).",
+		"severity": 0,
+		"range": {
+			"start": {
+				"line": 63,
+				"character": 10
+			},
+			"end": {
+				"line": 63,
+				"character": 33
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "tag-naming-convention",
+		"path": [
+			"tags",
+			"4",
+			"name"
+		],
+		"message": "Tag \"POS Onboarding\" should be PascalCase (e.g. Merchant, Location, PointOfSale, PosOnboarding).",
+		"severity": 0,
+		"range": {
+			"start": {
+				"line": 67,
+				"character": 10
+			},
+			"end": {
+				"line": 67,
+				"character": 24
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "operation-400-defined",
+		"path": [
+			"paths",
+			"/v1/terminals/onboard",
+			"get",
+			"responses"
+		],
+		"message": "Operation does not document a 400 Bad Request response.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 540,
+				"character": 16
+			},
+			"end": {
+				"line": 551,
+				"character": 54
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "request-body-description-required",
+		"path": [
+			"paths",
+			"/v1/terminals/onboard",
+			"post",
+			"requestBody"
+		],
+		"message": "requestBody is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 561,
+				"character": 18
+			},
+			"end": {
+				"line": 569,
+				"character": 73
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "operationid-camelcase",
+		"path": [
+			"paths",
+			"/v1/transactions/authorize",
+			"post",
+			"operationId"
+		],
+		"message": "operationId (\"AuthorizeTransaction\") should be camelCase (e.g. createMerchant, listLocations).",
+		"severity": 0,
+		"range": {
+			"start": {
+				"line": 593,
+				"character": 19
+			},
+			"end": {
+				"line": 593,
+				"character": 39
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "operation-tag-defined",
+		"path": [
+			"paths",
+			"/v1/transactions/authorize",
+			"post",
+			"tags",
+			"0"
+		],
+		"message": "Operation tags must be defined in global tags.",
+		"severity": 0,
+		"range": {
+			"start": {
+				"line": 595,
+				"character": 10
+			},
+			"end": {
+				"line": 595,
+				"character": 27
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "request-body-description-required",
+		"path": [
+			"paths",
+			"/v1/transactions/authorize",
+			"post",
+			"requestBody"
+		],
+		"message": "requestBody is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 597,
+				"character": 18
+			},
+			"end": {
+				"line": 602,
+				"character": 63
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "oas3-unused-component",
+		"path": [
+			"components",
+			"responses",
+			"Unauthorized"
+		],
+		"message": "Potentially unused component has been detected.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 710,
+				"character": 17
+			},
+			"end": {
+				"line": 732,
+				"character": 62
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "oas3-unused-component",
+		"path": [
+			"components",
+			"responses",
+			"Forbidden"
+		],
+		"message": "Potentially unused component has been detected.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 734,
+				"character": 14
+			},
+			"end": {
+				"line": 748,
+				"character": 62
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "schema-additional-properties-set",
+		"path": [
+			"components",
+			"schemas",
+			"OnboardingResult"
+		],
+		"message": "Schema \"OnboardingResult\" does not declare additionalProperties. Set it to false unless intentionally open.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 907,
+				"character": 21
+			},
+			"end": {
+				"line": 925,
+				"character": 41
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"OnboardingResult",
+			"properties",
+			"serialNumber"
+		],
+		"message": "Property \"serialNumber.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 915,
+				"character": 21
+			},
+			"end": {
+				"line": 917,
+				"character": 31
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "id-fields-readonly",
+		"path": [
+			"components",
+			"schemas",
+			"OnboardingResult",
+			"properties",
+			"merchantId"
+		],
+		"message": "Property \"merchantId.readOnly\" looks like a server-issued ID and should be readOnly.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 918,
+				"character": 19
+			},
+			"end": {
+				"line": 921,
+				"character": 55
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"OnboardingResult",
+			"properties",
+			"linkedAt"
+		],
+		"message": "Property \"linkedAt.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 922,
+				"character": 17
+			},
+			"end": {
+				"line": 925,
+				"character": 41
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "schema-additional-properties-set",
+		"path": [
+			"components",
+			"schemas",
+			"OnboardingSubmission"
+		],
+		"message": "Schema \"OnboardingSubmission\" does not declare additionalProperties. Set it to false unless intentionally open.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 927,
+				"character": 25
+			},
+			"end": {
+				"line": 971,
+				"character": 31
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "schema-additional-properties-set",
+		"path": [
+			"components",
+			"schemas",
+			"FieldGroup"
+		],
+		"message": "Schema \"FieldGroup\" does not declare additionalProperties. Set it to false unless intentionally open.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 973,
+				"character": 15
+			},
+			"end": {
+				"line": 985,
+				"character": 20
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldGroup",
+			"properties",
+			"key"
+		],
+		"message": "Property \"key.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 977,
+				"character": 12
+			},
+			"end": {
+				"line": 979,
+				"character": 27
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldGroup",
+			"properties",
+			"label"
+		],
+		"message": "Property \"label.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 980,
+				"character": 14
+			},
+			"end": {
+				"line": 982,
+				"character": 35
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldGroup",
+			"properties",
+			"order"
+		],
+		"message": "Property \"order.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 983,
+				"character": 14
+			},
+			"end": {
+				"line": 985,
+				"character": 20
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "schema-additional-properties-set",
+		"path": [
+			"components",
+			"schemas",
+			"FieldOption"
+		],
+		"message": "Schema \"FieldOption\" does not declare additionalProperties. Set it to false unless intentionally open.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 987,
+				"character": 16
+			},
+			"end": {
+				"line": 996,
+				"character": 48
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldOption",
+			"properties",
+			"value"
+		],
+		"message": "Property \"value.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 991,
+				"character": 14
+			},
+			"end": {
+				"line": 993,
+				"character": 25
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldOption",
+			"properties",
+			"label"
+		],
+		"message": "Property \"label.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 994,
+				"character": 14
+			},
+			"end": {
+				"line": 996,
+				"character": 48
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "schema-additional-properties-set",
+		"path": [
+			"components",
+			"schemas",
+			"FieldValidation"
+		],
+		"message": "Schema \"FieldValidation\" does not declare additionalProperties. Set it to false unless intentionally open.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 998,
+				"character": 20
+			},
+			"end": {
+				"line": 1022,
+				"character": 78
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldValidation",
+			"properties",
+			"minLength"
+		],
+		"message": "Property \"minLength.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1002,
+				"character": 18
+			},
+			"end": {
+				"line": 1004,
+				"character": 20
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldValidation",
+			"properties",
+			"maxLength"
+		],
+		"message": "Property \"maxLength.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1005,
+				"character": 18
+			},
+			"end": {
+				"line": 1007,
+				"character": 22
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldValidation",
+			"properties",
+			"min"
+		],
+		"message": "Property \"min.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1012,
+				"character": 12
+			},
+			"end": {
+				"line": 1013,
+				"character": 22
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-example-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldValidation",
+			"properties",
+			"min"
+		],
+		"message": "Property \"min.example\" is missing an example.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1012,
+				"character": 12
+			},
+			"end": {
+				"line": 1013,
+				"character": 22
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldValidation",
+			"properties",
+			"max"
+		],
+		"message": "Property \"max.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1014,
+				"character": 12
+			},
+			"end": {
+				"line": 1015,
+				"character": 22
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-example-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldValidation",
+			"properties",
+			"max"
+		],
+		"message": "Property \"max.example\" is missing an example.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1014,
+				"character": 12
+			},
+			"end": {
+				"line": 1015,
+				"character": 22
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-example-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldValidation",
+			"properties",
+			"mustEqual"
+		],
+		"message": "Property \"mustEqual.example\" is missing an example.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1020,
+				"character": 18
+			},
+			"end": {
+				"line": 1022,
+				"character": 78
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "schema-additional-properties-set",
+		"path": [
+			"components",
+			"schemas",
+			"FieldDefinition"
+		],
+		"message": "Schema \"FieldDefinition\" does not declare additionalProperties. Set it to false unless intentionally open.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1024,
+				"character": 20
+			},
+			"end": {
+				"line": 1059,
+				"character": 54
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldDefinition",
+			"properties",
+			"label"
+		],
+		"message": "Property \"label.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1032,
+				"character": 14
+			},
+			"end": {
+				"line": 1034,
+				"character": 32
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-example-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldDefinition",
+			"properties",
+			"description"
+		],
+		"message": "Property \"description.example\" is missing an example.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1035,
+				"character": 20
+			},
+			"end": {
+				"line": 1037,
+				"character": 54
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldDefinition",
+			"properties",
+			"type"
+		],
+		"message": "Property \"type.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1038,
+				"character": 13
+			},
+			"end": {
+				"line": 1041,
+				"character": 23
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "no-inline-enums",
+		"path": [
+			"components",
+			"schemas",
+			"FieldDefinition",
+			"properties",
+			"type",
+			"enum"
+		],
+		"message": "Property \"enum\" defines an inline enum. Extract it to components.schemas.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1040,
+				"character": 15
+			},
+			"end": {
+				"line": 1040,
+				"character": 65
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldDefinition",
+			"properties",
+			"required"
+		],
+		"message": "Property \"required.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1042,
+				"character": 17
+			},
+			"end": {
+				"line": 1044,
+				"character": 23
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldDefinition",
+			"properties",
+			"placeholder"
+		],
+		"message": "Property \"placeholder.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1045,
+				"character": 20
+			},
+			"end": {
+				"line": 1047,
+				"character": 41
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-description-required",
+		"path": [
+			"components",
+			"schemas",
+			"FieldDefinition",
+			"properties",
+			"order"
+		],
+		"message": "Property \"order.description\" is missing a description.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1048,
+				"character": 14
+			},
+			"end": {
+				"line": 1050,
+				"character": 20
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "schema-additional-properties-set",
+		"path": [
+			"components",
+			"schemas",
+			"OnboardingFormDefinition"
+		],
+		"message": "Schema \"OnboardingFormDefinition\" does not declare additionalProperties. Set it to false unless intentionally open.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1061,
+				"character": 29
+			},
+			"end": {
+				"line": 1095,
+				"character": 56
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "no-inline-enums",
+		"path": [
+			"components",
+			"schemas",
+			"LocationStatus",
+			"enum"
+		],
+		"message": "Property \"enum\" defines an inline enum. Extract it to components.schemas.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1118,
+				"character": 11
+			},
+			"end": {
+				"line": 1118,
+				"character": 37
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "no-inline-enums",
+		"path": [
+			"components",
+			"schemas",
+			"MerchantStatus",
+			"enum"
+		],
+		"message": "Property \"enum\" defines an inline enum. Extract it to components.schemas.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1132,
+				"character": 11
+			},
+			"end": {
+				"line": 1132,
+				"character": 39
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "no-inline-enums",
+		"path": [
+			"components",
+			"schemas",
+			"TerminalStatus",
+			"enum"
+		],
+		"message": "Property \"enum\" defines an inline enum. Extract it to components.schemas.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1146,
+				"character": 11
+			},
+			"end": {
+				"line": 1146,
+				"character": 39
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "no-inline-enums",
+		"path": [
+			"components",
+			"schemas",
+			"Kernel",
+			"enum"
+		],
+		"message": "Property \"enum\" defines an inline enum. Extract it to components.schemas.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1155,
+				"character": 11
+			},
+			"end": {
+				"line": 1155,
+				"character": 74
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-example-required",
+		"path": [
+			"components",
+			"schemas",
+			"AddressUpdate",
+			"properties",
+			"addressLineThree"
+		],
+		"message": "Property \"addressLineThree.example\" is missing an example.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1599,
+				"character": 25
+			},
+			"end": {
+				"line": 1603,
+				"character": 56
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-example-required",
+		"path": [
+			"components",
+			"schemas",
+			"Address",
+			"properties",
+			"addressLineThree"
+		],
+		"message": "Property \"addressLineThree.example\" is missing an example.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1646,
+				"character": 25
+			},
+			"end": {
+				"line": 1650,
+				"character": 56
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "id-fields-readonly",
+		"path": [
+			"components",
+			"schemas",
+			"AuthorizationRequest",
+			"properties",
+			"terminalId"
+		],
+		"message": "Property \"terminalId.readOnly\" looks like a server-issued ID and should be readOnly.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1710,
+				"character": 19
+			},
+			"end": {
+				"line": 1715,
+				"character": 55
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "id-fields-readonly",
+		"path": [
+			"components",
+			"schemas",
+			"AuthorizationRequest",
+			"properties",
+			"requestId"
+		],
+		"message": "Property \"requestId.readOnly\" looks like a server-issued ID and should be readOnly.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1716,
+				"character": 18
+			},
+			"end": {
+				"line": 1721,
+				"character": 55
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "id-fields-readonly",
+		"path": [
+			"components",
+			"schemas",
+			"AuthorizationIncomingPayment",
+			"properties",
+			"id"
+		],
+		"message": "Property \"id.readOnly\" looks like a server-issued ID and should be readOnly.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1741,
+				"character": 11
+			},
+			"end": {
+				"line": 1744,
+				"character": 98
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "id-fields-readonly",
+		"path": [
+			"components",
+			"schemas",
+			"AuthorizationTransactionResponse",
+			"properties",
+			"terminalId"
+		],
+		"message": "Property \"terminalId.readOnly\" looks like a server-issued ID and should be readOnly.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1782,
+				"character": 19
+			},
+			"end": {
+				"line": 1785,
+				"character": 55
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "id-fields-readonly",
+		"path": [
+			"components",
+			"schemas",
+			"AuthorizationTransactionResponse",
+			"properties",
+			"requestId"
+		],
+		"message": "Property \"requestId.readOnly\" looks like a server-issued ID and should be readOnly.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1786,
+				"character": 18
+			},
+			"end": {
+				"line": 1789,
+				"character": 38
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "oas3-unused-component",
+		"path": [
+			"components",
+			"schemas",
+			"WrappedKeys"
+		],
+		"message": "Potentially unused component has been detected.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1803,
+				"character": 16
+			},
+			"end": {
+				"line": 1824,
+				"character": 0
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "schema-additional-properties-set",
+		"path": [
+			"components",
+			"schemas",
+			"WrappedKeys"
+		],
+		"message": "Schema \"WrappedKeys\" does not declare additionalProperties. Set it to false unless intentionally open.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1803,
+				"character": 16
+			},
+			"end": {
+				"line": 1824,
+				"character": 0
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "property-example-required",
+		"path": [
+			"components",
+			"schemas",
+			"WrappedKeys",
+			"properties",
+			"payload"
+		],
+		"message": "Property \"payload.example\" is missing an example.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1816,
+				"character": 16
+			},
+			"end": {
+				"line": 1824,
+				"character": 0
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	},
+	{
+		"code": "schema-additional-properties-set",
+		"path": [
+			"components",
+			"schemas",
+			"Problem"
+		],
+		"message": "Schema \"Problem\" does not declare additionalProperties. Set it to false unless intentionally open.",
+		"severity": 1,
+		"range": {
+			"start": {
+				"line": 1825,
+				"character": 12
+			},
+			"end": {
+				"line": 1875,
+				"character": 55
+			}
+		},
+		"source": "/home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml"
+	}
+]
