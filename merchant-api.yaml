@@ -555,7 +555,7 @@ paths:
       summary: Submit onboarding data and link a terminal to a merchant
       description: >
         Submits merchant data collected on the terminal, validates it against the
-        onboarding field model, verifies it via ASE and links the device
+        onboarding field model, verifies it via FSP and links the device
         identified by terminalSerialNumber to the resolved merchant.
       tags:
         - POS Onboarding
