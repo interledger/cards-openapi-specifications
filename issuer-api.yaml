@@ -16,6 +16,8 @@ tags:
     description: Operations for card batch creation and EMV personalization via the HSM adapter.
   - name: CardManagement
     description: Operations for managing the lifecycle of a card, such as locking, unlocking, and deleting.
+  - name: Webhooks
+    description: Events delivered to the Issuer API by the issuer's Rafiki instance.
 
 paths:
   /v1/keypair/generate:
@@ -439,6 +441,74 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /v1/webhooks/rafiki:
+    post:
+      summary: Receive a Rafiki webhook event
+      operationId: handleRafikiWebhook
+      tags:
+        - Webhooks
+      description: |
+        Receives webhook events from the issuer's Rafiki instance. One endpoint
+        serves every event; the `type` field selects the handling.
+
+        - `card_authorization_requested`: Rafiki received an Open Payments
+          grant request whose outgoing-payment access carries a
+          `cardAuthorization`. The Issuer API authorizes the card transaction.
+          When the PIN Working Key (PWK) in `pwk` is not yet known, it is
+          imported under the Zone Master Key (ZMK) the merchant and issuer
+          share, and matched by its Key Check Value (KCV) afterwards.
+        - Any other `type` is acknowledged and ignored.
+
+        Rafiki treats only a `200` as delivered and retries any other status.
+        A declined authorization is a successful outcome and returns `200`.
+
+        When a webhook signing secret is configured, the `Rafiki-Signature`
+        header is required. It has the form `t=<unix ms>, v1=<hex>`, where the
+        digest is the HMAC-SHA256 of `<t>.<canonical JSON of the body>`
+        (RFC 8785), as Rafiki generates it.
+      parameters:
+        - name: Rafiki-Signature
+          in: header
+          required: false
+          description: Rafiki webhook signature, `t=<unix ms>, v1=<hex digest>`.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RafikiWebhookEvent'
+            examples:
+              card_authorization_requested:
+                summary: Card authorization with an online PIN
+                value:
+                  id: 3c7a5f1e-0d2b-4f6e-9a8c-1b2d3e4f5a6b
+                  type: card_authorization_requested
+                  data:
+                    grantId: 8f14e45f-ceea-467f-a0e6-6b2e3c4d5e6f
+                    cardAuthorization:
+                      requestId: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
+                      tlvData: 5A0841111111111111115F3401019F2608A4EECDFD19B3A9F1
+                      pinBlock: 4C1A2B3C4D5E6F708192A3B4C5D6E7F8
+                      pwk:
+                        key: D0112P0TE00E0000A1B2C3D4E5F60718293A4B5C6D7E8F90A1B2C3D4E5F60718293A4B5C6D7E8F90A1B2C3D4E5F60718293A4B5C6D7E8F90
+                        kvc: 1A2B3C
+                        iv: ''
+      responses:
+        '200':
+          description: Event processed or ignored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RafikiWebhookResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   schemas:
     GenerateKeypairRequest:
@@ -681,6 +751,8 @@ components:
           minItems: 1
           items:
             type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pii
           description: List of wallet addresses to create cards for
 
     CardBatch:
@@ -744,6 +816,116 @@ components:
           description: Human-readable reason for deleting the card
       required:
         - reason
+
+    RafikiWebhookEvent:
+      type: object
+      description: |
+        A Rafiki webhook event. `data` depends on `type`; for
+        `card_authorization_requested` it is a `CardAuthorizationRequestedData`.
+      required:
+        - id
+        - type
+        - data
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: Unique identifier of the event. Rafiki reuses it when it retries.
+          example: 3c7a5f1e-0d2b-4f6e-9a8c-1b2d3e4f5a6b
+        type:
+          type: string
+          minLength: 1
+          description: Event type, for example `card_authorization_requested`.
+          example: card_authorization_requested
+        data:
+          type: object
+          additionalProperties: true
+          description: Event payload. Its shape depends on `type`.
+
+    CardAuthorizationRequestedData:
+      type: object
+      description: |
+        Payload of a `card_authorization_requested` event: the
+        `cardAuthorization` from the Open Payments grant request, and the
+        grant it belongs to.
+      required:
+        - cardAuthorization
+      properties:
+        grantId:
+          type: string
+          description: Identifier of the pending grant in Rafiki.
+          example: 8f14e45f-ceea-467f-a0e6-6b2e3c4d5e6f
+        cardAuthorization:
+          $ref: '#/components/schemas/CardAuthorization'
+
+    CardAuthorization:
+      type: object
+      description: |
+        Card (EMV) authorization data, as carried on an Open Payments
+        outgoing-payment access (Open Payments v1.4.0). `pinBlock` requires
+        `pwk`.
+      required:
+        - requestId
+        - tlvData
+      properties:
+        requestId:
+          type: string
+          minLength: 1
+          description: Client-generated identifier of the authorization request.
+          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
+        tlvData:
+          type: string
+          minLength: 2
+          pattern: '^([0-9A-Fa-f]{2})+$'
+          x-oapi-codegen-extra-tags:
+            sensitive: crypto_data
+          description: Card data as EMV TLV, hex encoded.
+        pinBlock:
+          type: string
+          pattern: '^([0-9A-Fa-f]{2})+$'
+          x-oapi-codegen-extra-tags:
+            sensitive: credential
+          description: The PIN block, encrypted under `pwk`, hex encoded. Omitted when no PIN was captured.
+        pwk:
+          $ref: '#/components/schemas/PinWorkingKey'
+
+    PinWorkingKey:
+      type: object
+      description: The PIN Working Key (PWK) the PIN block is encrypted under.
+      required:
+        - key
+        - kvc
+        - iv
+      properties:
+        key:
+          type: string
+          minLength: 1
+          x-oapi-codegen-extra-tags:
+            sensitive: credential
+          description: The PWK as a TR-31 key block wrapped under the ZMK.
+        kvc:
+          type: string
+          minLength: 1
+          description: Key Check Value of the PWK. Identifies the key without revealing it.
+          example: 1A2B3C
+        iv:
+          type: string
+          description: Initialization vector. Empty for a TR-31 key block.
+
+    RafikiWebhookResult:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - processed
+            - ignored
+          description: |
+            `processed` when the event was handled; `ignored` for an event
+            type the Issuer API does not handle.
 
     Problem:
       type: object
