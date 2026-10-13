@@ -1134,19 +1134,6 @@ components:
       default: PENDING
       example: ACTIVE
 
-    TerminalStatus:
-      type: string
-      description: |
-        Lifecycle status of a terminal.
-
-        | Value       | Meaning                                                  |
-        |-------------|----------------------------------------------------------|
-        | `ACTIVE`    | Terminal is operational and may transact.                |
-        | `SUSPENDED` | Temporarily disabled; can be reactivated.                |
-        | `REVOKED`   | Permanently disabled; certificate is revoked. Terminal state. |
-      enum: [ACTIVE, SUSPENDED, REVOKED]
-      example: ACTIVE
-
     Kernel:
       type: string
       description: |
@@ -1263,14 +1250,14 @@ components:
       type: object
       description: A registered merchant (legal entity) that can own locations and terminals.
       required:
-        - merchantId
+        - id
         - legalName
         - country
         - status
         - createdAt
       additionalProperties: false
       properties:
-        merchantId:
+        id:
           type: string
           format: uuid
           x-go-type: string
@@ -1361,7 +1348,6 @@ components:
       required:
         - name
         - address
-      additionalProperties: false
       properties:
         name:
           type: string
@@ -1400,27 +1386,17 @@ components:
     Location:
       type: object
       description: A physical or logical site at which terminals can be deployed.
-      required:
-        - locationId
-        - merchantId
-        - name
-        - address
-        - status
-        - createdAt
-      additionalProperties: false
       properties:
         locationId:
           type: string
           format: uuid
           x-go-type: string
-          readOnly: true
           description: Server-issued location identifier.
           example: 5b8b6c34-1f7d-4f6c-9b9a-2a1c0d3e4f5b
         merchantId:
           type: string
           format: uuid
           x-go-type: string
-          readOnly: true
           description: Identifier of the merchant that owns this location.
           example: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
         name:
@@ -1434,7 +1410,6 @@ components:
         createdAt:
           type: string
           format: date-time
-          readOnly: true
           description: Timestamp at which the location was created (RFC 3339, UTC).
           example: "2025-01-31T12:34:56Z"
 
@@ -1462,17 +1437,11 @@ components:
     ManufacturerModel:
       type: object
       description: Registered POS manufacturer/model combination.
-      required:
-        - manufacturerModelId
-        - manufacturer
-        - model
-      additionalProperties: false
       properties:
         manufacturerModelId:
           type: string
           format: uuid
           x-go-type: string
-          readOnly: true
           description: Server-issued manufacturer model identifier.
           example: 550e8400-e29b-41d4-a716-446655440111
         manufacturer:
@@ -1491,7 +1460,6 @@ components:
         - serialNumber
         - manufacturer
         - model
-      additionalProperties: false
       properties:
         serialNumber:
           type: string
@@ -1522,37 +1490,32 @@ components:
         kernel:
           $ref: '#/components/schemas/Kernel'
         status:
-          allOf:
-            - $ref: '#/components/schemas/TerminalStatus'
-          description: New lifecycle status for the terminal.
+          type: string
+          description: |
+            New lifecycle status for the terminal.
+
+            | Value       | Meaning                                                  |
+            |-------------|----------------------------------------------------------|
+            | `ACTIVE`    | Terminal is operational and may transact.                |
+            | `SUSPENDED` | Temporarily disabled; can be reactivated.                |
+            | `REVOKED`   | Permanently disabled; certificate is revoked. Terminal state. |
+          enum: [ACTIVE, SUSPENDED, REVOKED]
           example: SUSPENDED
 
     Terminal:
       type: object
       description: A POS terminal registered under a location.
-      required:
-        - terminalId
-        - locationId
-        - serialNumber
-        - manufacturer
-        - model
-        - kernel
-        - status
-        - createdAt
-      additionalProperties: false
       properties:
         terminalId:
           type: string
           format: uuid
           x-go-type: string
-          readOnly: true
           description: Server-issued terminal identifier.
           example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
         locationId:
           type: string
           format: uuid
           x-go-type: string
-          readOnly: true
           description: Identifier of the location at which the terminal is deployed.
           example: 5b8b6c34-1f7d-4f6c-9b9a-2a1c0d3e4f5b
         serialNumber:
@@ -1570,11 +1533,14 @@ components:
         kernel:
           $ref: '#/components/schemas/Kernel'
         status:
-          $ref: '#/components/schemas/TerminalStatus'
+          type: string
+          x-go-type: string
+          description: Current lifecycle status of the terminal.
+          enum: [ACTIVE, SUSPENDED, REVOKED]
+          example: ACTIVE
         createdAt:
           type: string
           format: date-time
-          readOnly: true
           description: Timestamp at which the terminal was registered (RFC 3339, UTC).
           example: "2025-01-31T12:34:56Z"
 
@@ -1630,7 +1596,6 @@ components:
         - city
         - postalCode
         - country
-      additionalProperties: false
       properties:
         addressLineOne:
           type: string
@@ -1706,6 +1671,8 @@ components:
         - requestId
         - walletAddress
         - amount
+        - pan
+        - sred
       additionalProperties: false
       properties:
         terminalId:
@@ -1729,6 +1696,56 @@ components:
           example: https://merchant.example/.well-known/pay
         amount:
           $ref: '#/components/schemas/AuthorizationAmount'
+        pan:
+          type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: pci
+          description: ISO-4 binds the PAN into the encrypted block by construction, the HSM needs it as a separate input to translate.
+          example: "4111111111111111"
+        sred:
+          $ref: '#/components/schemas/AuthorizationSREDPayload'
+        pin:
+          $ref: '#/components/schemas/AuthorizationPINPayload'
+
+    AuthorizationSREDPayload:
+      type: object
+      description: SRED encrypted EMV payload from the POS.
+      required:
+        - cipherData
+        - iv
+        - ksn
+      additionalProperties: false
+      properties:
+        cipherData:
+          type: string
+          format: byte
+          description: binary blob from the C-2 kernel output
+        iv:
+          type: string
+          format: byte
+          description: initialization vector accompanying the ciphertext on the C-2 kernel output.
+        ksn:
+          type: string
+          description: identifies the per-transaction DUKPT working key derived from the merchant iMEAK BDK.
+
+    AuthorizationPINPayload:
+      type: object
+      description: Optional encrypted PIN payload from the POS kernel.
+      required:
+        - ksn
+        - pinBlock
+      additionalProperties: false
+      properties:
+        ksn:
+          type: string
+          minLength: 1
+          description: identifies the POS's per-transaction DUKPT key derived from the iPEK.
+        pinBlock:
+          type: string
+          format: byte
+          x-oapi-codegen-extra-tags:
+            sensitive: credential
+          description: encrypted PIN block in ISO-9564 Format 4
 
     AuthorizationIncomingPayment:
       type: object
