@@ -587,7 +587,7 @@ paths:
           $ref: "#/components/responses/UnprocessableContent"
         '500':
           $ref: '#/components/responses/InternalError'
-  
+
   /v1/transactions/authorize:
     post:
       summary: Authorize POS transactions
@@ -819,7 +819,7 @@ components:
                 status: 422
                 detail: data cannot be processed by the upstream
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
-  
+
   examples:
     OnboardingResultExample:
       summary: Terminal linked
@@ -847,7 +847,7 @@ components:
           settlementCurrency: USD
           walletAddress: $ilp.dev/007
           acceptedTerms: true
-    
+
     OnboardingFormDefinitionExample:
       summary: Example onboarding form definition
       value:
@@ -995,7 +995,7 @@ components:
         label:
           type: string
           example: Grocery stores / supermarkets
- 
+
     FieldValidation:
       type: object
       description: Declarative constraints. Clients ignore unknown keys.
@@ -1021,7 +1021,7 @@ components:
         mustEqual:
           type: boolean
           description: For checkbox consent fields, the value must equal this.
-    
+
     FieldDefinition:
       type: object
       required: [key, label, type, required, order]
@@ -1094,7 +1094,7 @@ components:
           description: The onboarding fields, to be rendered in ascending `order`.
           items:
             $ref: '#/components/schemas/FieldDefinition'
-    
+
     NextCursor:
       type: string
       nullable: true
@@ -1634,44 +1634,18 @@ components:
           pattern: '^[A-Z]{2}$'
           example: SI
 
-    AuthorizationAmount:
-      type: object
-      description: Open Payments amount type.
-      required:
-        - value
-        - assetCode
-        - assetScale
-      additionalProperties: false
-      properties:
-        value:
-          type: string
-          minLength: 1
-          pattern: '^[0-9]+$'
-          description: Integer amount value in the asset's minor units.
-          example: "2500"
-        assetCode:
-          type: string
-          minLength: 3
-          maxLength: 3
-          pattern: '^[A-Z]{3}$'
-          description: ISO 4217 currency code for the amount.
-          example: USD
-        assetScale:
-          type: integer
-          minimum: 0
-          maximum: 255
-          description: Number of decimal places used by the asset.
-          example: 2
-
     AuthorizationRequest:
       type: object
-      description: Authorization Request
+      description: |
+        Authorization Request.
+
+        Only the fields needed to select keys and decrypt travel in the clear.
+        The PAN, amount, currency and both wallet addresses are carried inside
+        `sred` (see `AuthorizationSREDPayload`) and are read by the Merchant
+        API after SRED decryption.
       required:
         - terminalId
         - requestId
-        - walletAddress
-        - amount
-        - pan
         - sred
       additionalProperties: false
       properties:
@@ -1687,21 +1661,6 @@ components:
           x-go-type: string
           description: Server-issued transaction identifier.
           example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
-        walletAddress:
-          type: string
-          minLength: 1
-          x-oapi-codegen-extra-tags:
-            sensitive: pii
-          description: Merchant wallet address used to create the incoming payment.
-          example: https://merchant.example/.well-known/pay
-        amount:
-          $ref: '#/components/schemas/AuthorizationAmount'
-        pan:
-          type: string
-          x-oapi-codegen-extra-tags:
-            sensitive: pci
-          description: ISO-4 binds the PAN into the encrypted block by construction, the HSM needs it as a separate input to translate.
-          example: "4111111111111111"
         sred:
           $ref: '#/components/schemas/AuthorizationSREDPayload'
         pin:
@@ -1709,7 +1668,36 @@ components:
 
     AuthorizationSREDPayload:
       type: object
-      description: SRED encrypted EMV payload from the POS.
+      description: |
+        SRED encrypted EMV payload from the POS.
+        `cipherData` decrypts to a BER-TLV list holding the tags below.
+        | Tag      | Name                              | Presence | Notes |
+        |----------|-----------------------------------|----------|-------|
+        | `5A`     | Application PAN                   | Required | Used as the PIN translate input. |
+        | `5F34`   | PAN Sequence Number               | Optional | |
+        | `9F36`   | Application Transaction Counter   | Required | |
+        | `9F26`   | Application Cryptogram (ARQC)     | Required | |
+        | `9F10`   | Issuer Application Data           | Required | Part of the data the card signs into the ARQC. |
+        | `82`     | Application Interchange Profile   | Required | Part of the data the card signs into the ARQC. |
+        | `95`     | Terminal Verification Results     | Optional | |
+        | `DF31`   | CDOL1 Data                        | Required | Proprietary. The CDOL1 values as sent in GENERATE AC, layout below. |
+        | `DFF101` | Cardholder Wallet Address         | Required | Wallet the outgoing payment is created on. |
+        | `DFF102` | Merchant Wallet Address           | Required | Wallet the incoming payment is created on. |
+
+        `DF31` holds the CDOL1 values in the order the card's CDOL1 lists them.
+        example From the current card profile that is 56 bytes:
+
+        | Offset | Length | Tag      | Name                                |
+        |--------|--------|----------|-------------------------------------|
+        | 0      | 6      | `9F02`   | Amount, Authorised                  |
+        | 6      | 2      | `5F2A`   | Transaction Currency Code           |
+        | 8      | 1      | `5F36`   | Transaction Currency Exponent       |
+        | 9      | 3      | `9A`     | Transaction Date                    |
+        | 12     | 3      | `9F21`   | Transaction Time                    |
+        | 15     | 4      | `9F37`   | Unpredictable Number                |
+        | 19     | 2      | `9F1A`   | Terminal Country Code               |
+        | 21     | 3      | `9F34`   | CVM Results                         |
+        | 24     | 32     | `DFF104` | Merchant Wallet Address SHA-256     |
       required:
         - cipherData
         - iv
@@ -1772,7 +1760,7 @@ components:
           format: date-time
           description: Expiry timestamp for the incoming payment.
           example: "2026-05-29T12:34:56Z"
-        
+
     AuthorizationResponseData:
       type: object
       description: Authorization data produced by completed authorization legs.
