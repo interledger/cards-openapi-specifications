@@ -17,7 +17,7 @@ tags:
   - name: CardManagement
     description: Operations for managing the lifecycle of a card, such as locking, unlocking, and deleting.
   - name: Webhooks
-    description: Events delivered to the Issuer API by the issuer's Rafiki instance.
+    description: Events delivered to the Issuer API by the issuer's Open Payments provider.
 
 paths:
   /v1/keypair/generate:
@@ -441,17 +441,17 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /v1/webhooks/rafiki:
+  /v1/webhooks/open-payments:
     post:
-      summary: Receive a Rafiki webhook event
-      operationId: handleRafikiWebhook
+      summary: Receive an Open Payments provider webhook event
+      operationId: handleOpenPaymentsWebhook
       tags:
         - Webhooks
       description: |
-        Receives webhook events from the issuer's Rafiki instance. One endpoint
+        Receives webhook events from the issuer's Open Payments provider. One endpoint
         serves every event; the `type` field selects the handling.
 
-        - `card_authorization_requested`: Rafiki received an Open Payments
+        - `card_authorization_requested`: The Open Payments provider received an Open Payments
           grant request whose outgoing-payment access carries a
           `cardAuthorization`. The Issuer API authorizes the card transaction.
           When the PIN Working Key (PWK) in `pwk` is not yet known, it is
@@ -459,18 +459,18 @@ paths:
           share, and matched by its Key Check Value (KCV) afterwards.
         - Any other `type` is acknowledged and ignored.
 
-        Rafiki treats only a `200` as delivered and retries any other status.
+        The Open Payments provider treats only a `200` as delivered and retries any other status.
         A declined authorization is a successful outcome and returns `200`.
 
-        When a webhook signing secret is configured, the `Rafiki-Signature`
+        When a webhook signing secret is configured, the `OpenPayments-Signature`
         header is required. It has the form `t=<unix ms>, v1=<hex>`, where the
         digest is the HMAC-SHA256 of `<t>.<canonical JSON of the body>`
-        (RFC 8785), as Rafiki generates it.
+        (RFC 8785), as the Open Payments provider generates it.
       parameters:
-        - name: Rafiki-Signature
+        - name: OpenPayments-Signature
           in: header
           required: false
-          description: Rafiki webhook signature, `t=<unix ms>, v1=<hex digest>`.
+          description: Open Payments provider webhook signature, `t=<unix ms>, v1=<hex digest>`.
           schema:
             type: string
       requestBody:
@@ -478,7 +478,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RafikiWebhookEvent'
+              $ref: '#/components/schemas/OpenPaymentsWebhookEvent'
             examples:
               card_authorization_requested:
                 summary: Card authorization with an online PIN
@@ -501,7 +501,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RafikiWebhookResult'
+                $ref: '#/components/schemas/OpenPaymentsWebhookResult'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -817,10 +817,10 @@ components:
       required:
         - reason
 
-    RafikiWebhookEvent:
+    OpenPaymentsWebhookEvent:
       type: object
       description: |
-        A Rafiki webhook event. `data` depends on `type`; for
+        An Open Payments provider webhook event. `data` depends on `type`; for
         `card_authorization_requested` it is a `CardAuthorizationRequestedData`.
       required:
         - id
@@ -830,7 +830,7 @@ components:
         id:
           type: string
           minLength: 1
-          description: Unique identifier of the event. Rafiki reuses it when it retries.
+          description: Unique identifier of the event. The Open Payments provider reuses it when it retries.
           example: 3c7a5f1e-0d2b-4f6e-9a8c-1b2d3e4f5a6b
         type:
           type: string
@@ -853,7 +853,7 @@ components:
       properties:
         grantId:
           type: string
-          description: Identifier of the pending grant in Rafiki.
+          description: Identifier of the pending grant in the Open Payments provider.
           example: 8f14e45f-ceea-467f-a0e6-6b2e3c4d5e6f
         cardAuthorization:
           $ref: '#/components/schemas/CardAuthorization'
@@ -912,7 +912,7 @@ components:
           type: string
           description: Initialization vector. Empty for a TR-31 key block.
 
-    RafikiWebhookResult:
+    OpenPaymentsWebhookResult:
       type: object
       additionalProperties: false
       required:
