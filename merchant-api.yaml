@@ -587,7 +587,7 @@ paths:
           $ref: "#/components/responses/UnprocessableContent"
         '500':
           $ref: '#/components/responses/InternalError'
-  
+
   /v1/transactions/authorize:
     post:
       summary: Authorize POS transactions
@@ -819,7 +819,7 @@ components:
                 status: 422
                 detail: data cannot be processed by the upstream
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
-  
+
   examples:
     OnboardingResultExample:
       summary: Terminal linked
@@ -847,7 +847,7 @@ components:
           settlementCurrency: USD
           walletAddress: $ilp.dev/007
           acceptedTerms: true
-    
+
     OnboardingFormDefinitionExample:
       summary: Example onboarding form definition
       value:
@@ -995,7 +995,7 @@ components:
         label:
           type: string
           example: Grocery stores / supermarkets
- 
+
     FieldValidation:
       type: object
       description: Declarative constraints. Clients ignore unknown keys.
@@ -1021,7 +1021,7 @@ components:
         mustEqual:
           type: boolean
           description: For checkbox consent fields, the value must equal this.
-    
+
     FieldDefinition:
       type: object
       required: [key, label, type, required, order]
@@ -1094,7 +1094,7 @@ components:
           description: The onboarding fields, to be rendered in ascending `order`.
           items:
             $ref: '#/components/schemas/FieldDefinition'
-    
+
     NextCursor:
       type: string
       nullable: true
@@ -1132,19 +1132,6 @@ components:
         | `SUSPENDED` | Temporarily blocked from accepting payments (compliance, risk, etc.). |
       enum: [PENDING, ACTIVE, SUSPENDED]
       default: PENDING
-      example: ACTIVE
-
-    TerminalStatus:
-      type: string
-      description: |
-        Lifecycle status of a terminal.
-
-        | Value       | Meaning                                                  |
-        |-------------|----------------------------------------------------------|
-        | `ACTIVE`    | Terminal is operational and may transact.                |
-        | `SUSPENDED` | Temporarily disabled; can be reactivated.                |
-        | `REVOKED`   | Permanently disabled; certificate is revoked. Terminal state. |
-      enum: [ACTIVE, SUSPENDED, REVOKED]
       example: ACTIVE
 
     Kernel:
@@ -1263,14 +1250,14 @@ components:
       type: object
       description: A registered merchant (legal entity) that can own locations and terminals.
       required:
-        - merchantId
+        - id
         - legalName
         - country
         - status
         - createdAt
       additionalProperties: false
       properties:
-        merchantId:
+        id:
           type: string
           format: uuid
           x-go-type: string
@@ -1361,7 +1348,6 @@ components:
       required:
         - name
         - address
-      additionalProperties: false
       properties:
         name:
           type: string
@@ -1400,27 +1386,17 @@ components:
     Location:
       type: object
       description: A physical or logical site at which terminals can be deployed.
-      required:
-        - locationId
-        - merchantId
-        - name
-        - address
-        - status
-        - createdAt
-      additionalProperties: false
       properties:
         locationId:
           type: string
           format: uuid
           x-go-type: string
-          readOnly: true
           description: Server-issued location identifier.
           example: 5b8b6c34-1f7d-4f6c-9b9a-2a1c0d3e4f5b
         merchantId:
           type: string
           format: uuid
           x-go-type: string
-          readOnly: true
           description: Identifier of the merchant that owns this location.
           example: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
         name:
@@ -1434,7 +1410,6 @@ components:
         createdAt:
           type: string
           format: date-time
-          readOnly: true
           description: Timestamp at which the location was created (RFC 3339, UTC).
           example: "2025-01-31T12:34:56Z"
 
@@ -1462,17 +1437,11 @@ components:
     ManufacturerModel:
       type: object
       description: Registered POS manufacturer/model combination.
-      required:
-        - manufacturerModelId
-        - manufacturer
-        - model
-      additionalProperties: false
       properties:
         manufacturerModelId:
           type: string
           format: uuid
           x-go-type: string
-          readOnly: true
           description: Server-issued manufacturer model identifier.
           example: 550e8400-e29b-41d4-a716-446655440111
         manufacturer:
@@ -1491,7 +1460,6 @@ components:
         - serialNumber
         - manufacturer
         - model
-      additionalProperties: false
       properties:
         serialNumber:
           type: string
@@ -1522,37 +1490,32 @@ components:
         kernel:
           $ref: '#/components/schemas/Kernel'
         status:
-          allOf:
-            - $ref: '#/components/schemas/TerminalStatus'
-          description: New lifecycle status for the terminal.
+          type: string
+          description: |
+            New lifecycle status for the terminal.
+
+            | Value       | Meaning                                                  |
+            |-------------|----------------------------------------------------------|
+            | `ACTIVE`    | Terminal is operational and may transact.                |
+            | `SUSPENDED` | Temporarily disabled; can be reactivated.                |
+            | `REVOKED`   | Permanently disabled; certificate is revoked. Terminal state. |
+          enum: [ACTIVE, SUSPENDED, REVOKED]
           example: SUSPENDED
 
     Terminal:
       type: object
       description: A POS terminal registered under a location.
-      required:
-        - terminalId
-        - locationId
-        - serialNumber
-        - manufacturer
-        - model
-        - kernel
-        - status
-        - createdAt
-      additionalProperties: false
       properties:
         terminalId:
           type: string
           format: uuid
           x-go-type: string
-          readOnly: true
           description: Server-issued terminal identifier.
           example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
         locationId:
           type: string
           format: uuid
           x-go-type: string
-          readOnly: true
           description: Identifier of the location at which the terminal is deployed.
           example: 5b8b6c34-1f7d-4f6c-9b9a-2a1c0d3e4f5b
         serialNumber:
@@ -1570,11 +1533,14 @@ components:
         kernel:
           $ref: '#/components/schemas/Kernel'
         status:
-          $ref: '#/components/schemas/TerminalStatus'
+          type: string
+          x-go-type: string
+          description: Current lifecycle status of the terminal.
+          enum: [ACTIVE, SUSPENDED, REVOKED]
+          example: ACTIVE
         createdAt:
           type: string
           format: date-time
-          readOnly: true
           description: Timestamp at which the terminal was registered (RFC 3339, UTC).
           example: "2025-01-31T12:34:56Z"
 
@@ -1630,7 +1596,6 @@ components:
         - city
         - postalCode
         - country
-      additionalProperties: false
       properties:
         addressLineOne:
           type: string
@@ -1669,43 +1634,19 @@ components:
           pattern: '^[A-Z]{2}$'
           example: SI
 
-    AuthorizationAmount:
-      type: object
-      description: Open Payments amount type.
-      required:
-        - value
-        - assetCode
-        - assetScale
-      additionalProperties: false
-      properties:
-        value:
-          type: string
-          minLength: 1
-          pattern: '^[0-9]+$'
-          description: Integer amount value in the asset's minor units.
-          example: "2500"
-        assetCode:
-          type: string
-          minLength: 3
-          maxLength: 3
-          pattern: '^[A-Z]{3}$'
-          description: ISO 4217 currency code for the amount.
-          example: USD
-        assetScale:
-          type: integer
-          minimum: 0
-          maximum: 255
-          description: Number of decimal places used by the asset.
-          example: 2
-
     AuthorizationRequest:
       type: object
-      description: Authorization Request
+      description: |
+        Authorization Request.
+
+        Only the fields needed to select keys and decrypt travel in the clear.
+        The PAN, amount, currency and both wallet addresses are carried inside
+        `sred` (see `AuthorizationSREDPayload`) and are read by the Merchant
+        API after SRED decryption.
       required:
         - terminalId
         - requestId
-        - walletAddress
-        - amount
+        - sred
       additionalProperties: false
       properties:
         terminalId:
@@ -1720,15 +1661,79 @@ components:
           x-go-type: string
           description: Server-issued transaction identifier.
           example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
-        walletAddress:
+        sred:
+          $ref: '#/components/schemas/AuthorizationSREDPayload'
+        pin:
+          $ref: '#/components/schemas/AuthorizationPINPayload'
+
+    AuthorizationSREDPayload:
+      type: object
+      description: |
+        SRED encrypted EMV payload from the POS.
+        `cipherData` decrypts to a BER-TLV list holding the tags below.
+        | Tag      | Name                              | Presence | Notes |
+        |----------|-----------------------------------|----------|-------|
+        | `5A`     | Application PAN                   | Required | Used as the PIN translate input. |
+        | `5F34`   | PAN Sequence Number               | Optional | |
+        | `9F36`   | Application Transaction Counter   | Required | |
+        | `9F26`   | Application Cryptogram (ARQC)     | Required | |
+        | `9F10`   | Issuer Application Data           | Required | Part of the data the card signs into the ARQC. |
+        | `82`     | Application Interchange Profile   | Required | Part of the data the card signs into the ARQC. |
+        | `95`     | Terminal Verification Results     | Optional | |
+        | `DF31`   | CDOL1 Data                        | Required | Proprietary. The CDOL1 values as sent in GENERATE AC, layout below. |
+        | `DFF101` | Cardholder Wallet Address         | Required | Wallet the outgoing payment is created on. |
+        | `DFF102` | Merchant Wallet Address           | Required | Wallet the incoming payment is created on. |
+
+        `DF31` holds the CDOL1 values in the order the card's CDOL1 lists them.
+        example From the current card profile that is 56 bytes:
+
+        | Offset | Length | Tag      | Name                                |
+        |--------|--------|----------|-------------------------------------|
+        | 0      | 6      | `9F02`   | Amount, Authorised                  |
+        | 6      | 2      | `5F2A`   | Transaction Currency Code           |
+        | 8      | 1      | `5F36`   | Transaction Currency Exponent       |
+        | 9      | 3      | `9A`     | Transaction Date                    |
+        | 12     | 3      | `9F21`   | Transaction Time                    |
+        | 15     | 4      | `9F37`   | Unpredictable Number                |
+        | 19     | 2      | `9F1A`   | Terminal Country Code               |
+        | 21     | 3      | `9F34`   | CVM Results                         |
+        | 24     | 32     | `DFF104` | Merchant Wallet Address SHA-256     |
+      required:
+        - cipherData
+        - iv
+        - ksn
+      additionalProperties: false
+      properties:
+        cipherData:
+          type: string
+          format: byte
+          description: binary blob from the C-2 kernel output
+        iv:
+          type: string
+          format: byte
+          description: initialization vector accompanying the ciphertext on the C-2 kernel output.
+        ksn:
+          type: string
+          description: identifies the per-transaction DUKPT working key derived from the merchant iMEAK BDK.
+
+    AuthorizationPINPayload:
+      type: object
+      description: Optional encrypted PIN payload from the POS kernel.
+      required:
+        - ksn
+        - pinBlock
+      additionalProperties: false
+      properties:
+        ksn:
           type: string
           minLength: 1
+          description: identifies the POS's per-transaction DUKPT key derived from the iPEK.
+        pinBlock:
+          type: string
+          format: byte
           x-oapi-codegen-extra-tags:
-            sensitive: pii
-          description: Merchant wallet address used to create the incoming payment.
-          example: https://merchant.example/.well-known/pay
-        amount:
-          $ref: '#/components/schemas/AuthorizationAmount'
+            sensitive: credential
+          description: encrypted PIN block in ISO-9564 Format 4
 
     AuthorizationIncomingPayment:
       type: object
@@ -1755,7 +1760,7 @@ components:
           format: date-time
           description: Expiry timestamp for the incoming payment.
           example: "2026-05-29T12:34:56Z"
-        
+
     AuthorizationResponseData:
       type: object
       description: Authorization data produced by completed authorization legs.
