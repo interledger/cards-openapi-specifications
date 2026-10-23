@@ -1,0 +1,264 @@
+###############################################################################
+# Interledger API documentation Spectral ruleset
+#
+# This ruleset codifies the rules captured in the Interledger API
+# Documentation Style Guide. It extends Spectral's built-in OAS ruleset
+# (correctness baseline) and adds custom rules for the team's conventions.
+#
+# Usage:
+#   npm install -g @stoplight/spectral-cli
+#   spectral lint api.yaml --ruleset .spectral.yaml
+#
+# Severity levels used:
+#   error - blocks merges; correctness or non-negotiable house style
+#   warn  - flagged in CI but not blocking; should be fixed
+#   info  - guidance only
+###############################################################################
+
+extends:
+  - spectral:oas
+
+rules:
+  # ---------------------------------------------------------------------------
+  # Section 1. Correctness baseline (built-in OAS rules we explicitly enable)
+  # ---------------------------------------------------------------------------
+
+  # Every operation needs an operationId. SDK generators rely on this.
+  operation-operationId: error
+
+  # operationIds must be unique. Built-in but explicitly raised to error.
+  operation-operationId-unique: error
+
+  # Every operation needs a summary.
+  operation-description: warn
+
+  # Every operation needs at least one tag.
+  operation-tag-defined: error
+
+  # Path parameters declared in the URL must be defined under parameters.
+  path-params: error
+
+  # ---------------------------------------------------------------------------
+  # Section 2. Identifiers and naming
+  # ---------------------------------------------------------------------------
+
+  # Rule: operationId must be camelCase verb-noun (e.g. createMerchant).
+  operationid-camelcase:
+    description: operationId must be camelCase and start with a lowercase letter.
+    message: '{{property}} ("{{value}}") should be camelCase (e.g. createMerchant, listLocations).'
+    severity: error
+    given: $.paths[*][get,post,patch,put,delete].operationId
+    then:
+      function: pattern
+      functionOptions:
+        match: '^[a-z][a-zA-Z0-9]+$'
+
+  # Rule: schema names must be PascalCase.
+  schema-names-pascalcase:
+    description: Schema names under components.schemas must be PascalCase.
+    message: 'Schema name "{{property}}" should be PascalCase (e.g. Merchant, MerchantCreate).'
+    severity: error
+    given: $.components.schemas.*~
+    then:
+      function: pattern
+      functionOptions:
+        match: '^[A-Z][a-zA-Z0-9]+$'
+
+  # Rule: tag names must follow a single convention.
+  # Decision (per style guide): PascalCase, no parentheses, no spaces.
+  # Adjust the pattern if the team chooses a different convention.
+  tag-naming-convention:
+    description: Tag names must be PascalCase with no spaces or punctuation.
+    message: 'Tag "{{value}}" should be PascalCase (e.g. Merchant, Location, PointOfSale, PosOnboarding).'
+    severity: error
+    given: $.tags[*].name
+    then:
+      function: pattern
+      functionOptions:
+        match: '^[A-Z][a-zA-Z0-9]+$'
+
+  # Rule: path segments must be lowercase, hyphenated, plural for collections.
+  path-segments-lowercase:
+    description: Path segments (except path parameters) must be lowercase.
+    message: 'Path "{{property}}" contains uppercase characters in a static segment.'
+    severity: error
+    given: $.paths.*~
+    then:
+      function: pattern
+      functionOptions:
+        match: '^(/(v[0-9]+|[a-z][a-z0-9-]*|\{[a-zA-Z][a-zA-Z0-9]*\}))+$'
+
+  # Rule: path parameters must follow {resource}Id naming.
+  path-param-id-naming:
+    description: Path parameter names should follow {resource}Id (e.g. merchantId).
+    message: 'Path parameter "{{value}}" should be camelCase and end in "Id" (e.g. merchantId, locationId).'
+    severity: warn
+    given: $.paths[*].parameters[?(@.in == "path")].name
+    then:
+      function: pattern
+      functionOptions:
+        match: '^[a-z][a-zA-Z0-9]*Id$'
+
+  # ---------------------------------------------------------------------------
+  # Section 3. Schema hygiene
+  # ---------------------------------------------------------------------------
+
+  # Rule: object schemas should declare additionalProperties explicitly.
+  # In practice the house default is `additionalProperties: false` for both
+  # request and response payloads. Warn (not error) to allow rare exceptions
+  # documented in the schema description.
+  # Editor note: the filter does the logic and the rule anchors to the
+  # schema NAME key, so editors underline one line instead of the whole
+  # schema block. `== null` matches only absent/null, not `false`.
+  schema-additional-properties-set:
+    description: Object schemas should explicitly set additionalProperties.
+    message: 'Schema "{{property}}" does not declare additionalProperties. Set it to false unless intentionally open.'
+    severity: warn
+    given: '$.components.schemas[?(@.type == "object" && @.additionalProperties == null)]~'
+    then:
+      function: falsy
+
+  # Rule: every schema property must have a description.
+  property-description-required:
+    description: Every schema property must have a description.
+    message: 'Property "{{property}}" is missing a description.'
+    severity: warn
+    given: $.components.schemas[*].properties[*]
+    then:
+      field: description
+      function: truthy
+
+  # Rule: every schema property must have an example
+  # (or be a $ref to a schema that does).
+  property-example-required:
+    description: Every leaf schema property should have an example.
+    message: 'Property "{{property}}" is missing an example.'
+    severity: warn
+    given: $.components.schemas[*].properties[?(@.type && @.type != "object" && @.type != "array")]
+    then:
+      field: example
+      function: truthy
+
+  # Rule: do not inline enums in property definitions.
+  # Extract reusable enums to components.schemas (e.g. MerchantStatus).
+  no-inline-enums:
+    description: Enums should be defined as reusable schemas, not inlined.
+    message: 'Property "{{property}}" defines an inline enum. Extract it to components.schemas.'
+    severity: warn
+    given: $.components.schemas[*].properties[?(@.enum)]
+    then:
+      field: enum
+      function: falsy
+
+  # Rule: string id properties on response schemas must be readOnly.
+  id-fields-readonly:
+    description: Server-issued identifier fields must be readOnly on response schemas.
+    message: 'Property "{{property}}" looks like a server-issued ID and should be readOnly.'
+    severity: warn
+    given: $.components.schemas[*].properties[?(@property == "id" || @property.match(/Id$/))]
+    then:
+      field: readOnly
+      function: truthy
+
+  # Rule: createdAt / updatedAt must be readOnly.
+  timestamps-readonly:
+    description: Server-managed timestamps must be readOnly.
+    message: 'Property "{{property}}" must be readOnly.'
+    severity: warn
+    given: $.components.schemas[*].properties[?(@property == "createdAt" || @property == "updatedAt")]
+    then:
+      field: readOnly
+      function: truthy
+
+  # ---------------------------------------------------------------------------
+  # Section 4. Responses and errors
+  # ---------------------------------------------------------------------------
+
+  # Rule: error responses (4xx, 5xx) must use $ref to shared components.
+  # Inline error definitions are not allowed (they bypass the Problem schema).
+  error-responses-must-ref:
+    description: 4xx and 5xx responses must reference shared error responses.
+    message: 'Response "{{property}}" defines an error inline. Use $ref to components.responses.'
+    severity: error
+    resolved: false
+    given: $.paths[*][get,post,patch,put,delete].responses[?(@property.match(/^[45]\d\d$/))]
+    then:
+      field: $ref
+      function: truthy
+
+  # Rule: every operation must document a 400 response.
+  operation-400-defined:
+    description: Operations must document a 400 Bad Request response.
+    message: Operation does not document a 400 Bad Request response.
+    severity: warn
+    given: "$.paths[*][?(@.responses && @.responses['400'] == null)].responses~"
+    then:
+      function: falsy
+
+  # Rule: every operation must document a 500 response.
+  operation-500-defined:
+    description: Operations must document a 500 Internal Server Error response.
+    message: Operation does not document a 500 Internal Server Error response.
+    severity: warn
+    given: "$.paths[*][?(@.responses && @.responses['500'] == null)].responses~"
+    then:
+      function: falsy
+
+  # ---------------------------------------------------------------------------
+  # Section 5. Security and servers
+  # ---------------------------------------------------------------------------
+
+  # Rule: authentication handling must be documented.
+  # Per engineering, this API delegates authorization to the implementing
+  # ASE, so securitySchemes is intentionally absent. The spec must instead
+  # state how auth is handled in info.description. This heuristic checks
+  # that the description mentions authentication or authorization.
+  auth-handling-documented:
+    description: info.description must state how authentication/authorization is handled.
+    message: info.description does not mention how authentication or authorization is handled. Document the delegated-auth model.
+    severity: warn
+    given: $.info.description
+    then:
+      function: pattern
+      functionOptions:
+        match: '[Aa]uthoriz|[Aa]uthenticat'
+
+  # Rule: spec must declare at least one server.
+  servers-defined:
+    description: The spec must declare at least one server URL.
+    severity: error
+    given: $
+    then:
+      field: servers
+      function: truthy
+
+  # ---------------------------------------------------------------------------
+  # Section 6. Documentation quality
+  # ---------------------------------------------------------------------------
+
+  # Rule: info.description must exist and be substantial.
+  info-description-required:
+    description: info.description must be present and explain the API.
+    severity: error
+    given: $.info
+    then:
+      field: description
+      function: truthy
+
+  # Rule: tags must have descriptions.
+  tag-description-required:
+    description: Every tag must have a description.
+    severity: warn
+    given: $.tags[*]
+    then:
+      field: description
+      function: truthy
+
+  # Rule: request bodies must have descriptions.
+  request-body-description-required:
+    description: Every requestBody must have a description.
+    message: requestBody is missing a description.
+    severity: warn
+    given: "$.paths[*][?(@.requestBody && @.requestBody.description == null)].requestBody~"
+    then:
+      function: falsy

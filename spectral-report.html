@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family:Arial, "Helvetica Neue", Helvetica, sans-serif;
+            font-size:16px;
+            font-weight:normal;
+            margin:0;
+            padding:0;
+            color:#333
+        }
+        #overview {
+            padding:20px 30px
+        }
+        td, th {
+            padding:5px 10px
+        }
+        h1 {
+            margin:0
+        }
+        table {
+            margin:30px;
+            width:calc(100% - 60px);
+            max-width:1000px;
+            border-radius:5px;
+            border:1px solid #ddd;
+            border-spacing:0px;
+        }
+        th {
+            font-weight:400;
+            font-size:medium;
+            text-align:left;
+            cursor:pointer
+        }
+        td.severity, th span {
+            font-weight:700
+        }
+        th span {
+            float:right;
+            margin-left:20px
+        }
+        th span:after {
+            content:"";
+            clear:both;
+            display:block
+        }
+        tr:last-child td {
+            border-bottom:none
+        }
+        tr td:first-child, tr td:last-child {
+            color:#9da0a4
+        }
+        #overview.bg-success, tr.bg-success th {
+            color:#468847;
+            background:#dff0d8;
+            border-bottom:1px solid #d6e9c6
+        }
+        #overview.bg-error, tr.bg-error th {
+            color:#b94a48;
+            background:#f2dede;
+            border-bottom:1px solid #eed3d7
+        }
+        #overview.bg-warning, tr.bg-warning th {
+            color:#f0ad4e;
+            background:#fcf8e3;
+            border-bottom:1px solid #fbeed5
+        }
+        #overview.bg-information, tr.bg-information th {
+            color:#4e95f0;
+            background:#deecfb;
+            border-bottom:1px solid #d3e3ee
+        }
+        td {
+            border-bottom:1px solid #ddd
+        }
+        td.clr-error {
+            color:#b94a48
+        }
+        td.clr-warning {
+            color:#f0ad4e
+        }
+        td.clr-information {
+            color:#4e95f0
+        }
+        td.clr-hint {
+            color:#5a5a5a
+        }
+    </style>
+    <title>Spectral Report</title>
+</head>
+<body>
+<div id="overview" class="bg-error">
+    <h1>Spectral Report</h1>
+    <div>
+        <span>58 problems (6 errors, 52 warnings, 0 infos, 0 hints)</span> - Generated on Thu Aug 06 2026 08:46:06 GMT-0400 (Eastern Daylight Time)
+    </div>
+</div>
+<table>
+    <tbody>
+    <tr class="bg-error" data-group="f-0">
+    <th colspan="4">
+        [+] /home/hajjimo/Documents/GitHub/cards-openapi-specifications/merchant-api.yaml
+        <span>58 problems (6 errors, 52 warnings, 0 infos, 0 hints)</span>
+    </th>
+</tr>
+<tr style="display:none" class="f-0">
+    <td>1:1</td>
+    <td class="severity clr-warning">warning</td>
+    <td>OpenAPI &quot;servers&quot; must be present and non-empty array.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1:1</td>
+    <td class="severity clr-error">error</td>
+    <td>The spec must declare at least one server URL.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>2:6</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Info object must have &quot;contact&quot; object.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>5:16</td>
+    <td class="severity clr-warning">warning</td>
+    <td>info.description does not mention how authentication or authorization is handled. Document the delegated-auth model.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>60:11</td>
+    <td class="severity clr-error">error</td>
+    <td>Tag &quot;Point of Sale (POS)&quot; should be PascalCase (e.g. Merchant, Location, PointOfSale, PosOnboarding).</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>64:11</td>
+    <td class="severity clr-error">error</td>
+    <td>Tag &quot;POS Manufacturer Models&quot; should be PascalCase (e.g. Merchant, Location, PointOfSale, PosOnboarding).</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>68:11</td>
+    <td class="severity clr-error">error</td>
+    <td>Tag &quot;POS Onboarding&quot; should be PascalCase (e.g. Merchant, Location, PointOfSale, PosOnboarding).</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>541:17</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Operation does not document a 400 Bad Request response.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>562:19</td>
+    <td class="severity clr-warning">warning</td>
+    <td>requestBody is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>594:20</td>
+    <td class="severity clr-error">error</td>
+    <td>operationId (&quot;AuthorizeTransaction&quot;) should be camelCase (e.g. createMerchant, listLocations).</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>596:11</td>
+    <td class="severity clr-error">error</td>
+    <td>Operation tags must be defined in global tags.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>598:19</td>
+    <td class="severity clr-warning">warning</td>
+    <td>requestBody is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>711:18</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Potentially unused component has been detected.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>735:15</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Potentially unused component has been detected.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>908:22</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Schema &quot;OnboardingResult&quot; does not declare additionalProperties. Set it to false unless intentionally open.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>916:22</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;serialNumber.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>919:20</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;merchantId.readOnly&quot; looks like a server-issued ID and should be readOnly.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>923:18</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;linkedAt.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>928:26</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Schema &quot;OnboardingSubmission&quot; does not declare additionalProperties. Set it to false unless intentionally open.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>974:16</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Schema &quot;FieldGroup&quot; does not declare additionalProperties. Set it to false unless intentionally open.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>978:13</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;key.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>981:15</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;label.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>984:15</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;order.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>988:17</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Schema &quot;FieldOption&quot; does not declare additionalProperties. Set it to false unless intentionally open.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>992:15</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;value.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>995:15</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;label.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>999:21</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Schema &quot;FieldValidation&quot; does not declare additionalProperties. Set it to false unless intentionally open.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1003:19</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;minLength.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1006:19</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;maxLength.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1013:13</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;min.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1013:13</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;min.example&quot; is missing an example.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1015:13</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;max.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1015:13</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;max.example&quot; is missing an example.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1021:19</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;mustEqual.example&quot; is missing an example.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1025:21</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Schema &quot;FieldDefinition&quot; does not declare additionalProperties. Set it to false unless intentionally open.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1033:15</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;label.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1036:21</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;description.example&quot; is missing an example.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1039:14</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;type.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1041:16</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;enum&quot; defines an inline enum. Extract it to components.schemas.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1043:18</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;required.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1046:21</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;placeholder.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1049:15</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;order.description&quot; is missing a description.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1062:30</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Schema &quot;OnboardingFormDefinition&quot; does not declare additionalProperties. Set it to false unless intentionally open.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1119:12</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;enum&quot; defines an inline enum. Extract it to components.schemas.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1133:12</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;enum&quot; defines an inline enum. Extract it to components.schemas.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1147:12</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;enum&quot; defines an inline enum. Extract it to components.schemas.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1156:12</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;enum&quot; defines an inline enum. Extract it to components.schemas.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1600:26</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;addressLineThree.example&quot; is missing an example.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1647:26</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;addressLineThree.example&quot; is missing an example.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1711:20</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;terminalId.readOnly&quot; looks like a server-issued ID and should be readOnly.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1717:19</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;requestId.readOnly&quot; looks like a server-issued ID and should be readOnly.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1742:12</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;id.readOnly&quot; looks like a server-issued ID and should be readOnly.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1783:20</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;terminalId.readOnly&quot; looks like a server-issued ID and should be readOnly.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1787:19</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;requestId.readOnly&quot; looks like a server-issued ID and should be readOnly.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1804:17</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Potentially unused component has been detected.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1804:17</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Schema &quot;WrappedKeys&quot; does not declare additionalProperties. Set it to false unless intentionally open.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1817:17</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Property &quot;payload.example&quot; is missing an example.</td>
+    <td></td>
+</tr>
+
+<tr style="display:none" class="f-0">
+    <td>1826:13</td>
+    <td class="severity clr-warning">warning</td>
+    <td>Schema &quot;Problem&quot; does not declare additionalProperties. Set it to false unless intentionally open.</td>
+    <td></td>
+</tr>
+
+    </tbody>
+</table>
+<script type="text/javascript">
+    var groups = document.querySelectorAll("tr[data-group]");
+    for (var i = 0; i < groups.length; i++) {
+        groups[i].addEventListener("click", function() {
+            var inGroup = document.getElementsByClassName(this.getAttribute("data-group"));
+            this.innerHTML = (this.innerHTML.indexOf("+") > -1) ? this.innerHTML.replace("+", "-") : this.innerHTML.replace("-", "+");
+            for (var j = 0; j < inGroup.length; j++) {
+                inGroup[j].style.display = (inGroup[j].style.display !== "none") ? "none" : "table-row";
+            }
+        });
+    }
+</script>
+</body>
+</html>
