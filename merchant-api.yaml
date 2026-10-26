@@ -603,7 +603,9 @@ paths:
               $ref: '#/components/schemas/AuthorizationRequest'
       responses:
         '200':
-          description: POS Authorization completed successfully
+          description: |
+            The issuer decided. Its result is in `data.authorization`. A decline
+            is also a `200`: the ARC (EMV tag `8A`) gives the outcome.
           content:
             application/json:
               schema:
@@ -1761,15 +1763,54 @@ components:
           description: Expiry timestamp for the incoming payment.
           example: "2026-05-29T12:34:56Z"
 
+    AuthorizationIssuerResult:
+      type: object
+      description: |
+        The issuer's authorization result, from `cardAuthorization` on the Open
+        Payments grant response. The POS has the final say on the transaction:
+        it reads the outcome from `arc` and passes `tlvData` to its kernel.
+      required:
+        - arc
+        - tlvData
+      additionalProperties: false
+      properties:
+        arc:
+          type: string
+          pattern: '^[0-9A-Z]{2}$'
+          description: |
+            Authorization Response Code (EMV tag `8A`). `00` approves. Other
+            approving codes exist, so read the outcome of a code from the
+            ISO 8583 / EMV ARC table, not from `00` alone.
+          example: "00"
+        authCode:
+          type: string
+          minLength: 1
+          maxLength: 6
+          description: Authorization code (EMV tag `89`). Present only on approval.
+          example: "A1B2C3"
+        tlvData:
+          type: string
+          pattern: '^([0-9A-F]{2})+$'
+          x-oapi-codegen-extra-tags:
+            sensitive: crypto_data
+          description: |
+            The issuer's result as hex-encoded BER-TLV: `8A`, and when present
+            `89` and `91` (Issuer Authentication Data, which carries the ARPC).
+            A contact kernel needs `8A` and `91` for the second GENERATE AC.
+          example: "8A023030890641314232433391081122334455667788"
+
     AuthorizationResponseData:
       type: object
       description: Authorization data produced by completed authorization legs.
       required:
         - incomingPayment
+        - authorization
       additionalProperties: false
       properties:
         incomingPayment:
           $ref: '#/components/schemas/AuthorizationIncomingPayment'
+        authorization:
+          $ref: '#/components/schemas/AuthorizationIssuerResult'
 
     AuthorizationTransactionResponse:
       type: object
