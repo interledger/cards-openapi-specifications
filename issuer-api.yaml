@@ -840,6 +840,8 @@ components:
         data:
           type: object
           additionalProperties: true
+          x-oapi-codegen-extra-tags:
+            sensitive: crypto_data
           description: Event payload. Its shape depends on `type`.
 
     CardAuthorizationRequestedData:
@@ -901,7 +903,7 @@ components:
           type: string
           minLength: 1
           x-oapi-codegen-extra-tags:
-            sensitive: credential
+            sensitive: crypto_key
           description: The PWK as a TR-31 key block wrapped under the ZMK.
         kvc:
           type: string

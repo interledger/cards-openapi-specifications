@@ -1709,6 +1709,8 @@ components:
         cipherData:
           type: string
           format: byte
+          x-oapi-codegen-extra-tags:
+            sensitive: crypto_data
           description: binary blob from the C-2 kernel output
         iv:
           type: string
