@@ -25,7 +25,8 @@ info:
     * All requests and responses use `application/json` (UTF-8) unless
       explicitly stated otherwise.
     * Timestamps are ISO 8601 / RFC 3339 in UTC (`2025-01-31T12:34:56Z`).
-    * Identifiers (`terminalId`, `requestId`) are opaque UUIDv4 strings.
+    * `terminalId` is a UUIDv4 that the server issues.
+    * `requestId` is a UUID that the terminal generates.
     * Errors are returned as **RFC 7807 Problem Details for HTTP APIs**
       objects (see [`Problem`](#/components/schemas/Problem)) with
       `type`, `title`, `status`, `detail` and `instance` fields. The
@@ -33,12 +34,12 @@ info:
       ID and should be quoted when reporting issues.
 
 tags:
-  - name: PosOnboarding
+  - name: pos-onboarding
     description: |
       Onboarding flow executed by the POS device itself to retrieve the
       onboarding form definition, submit the collected merchant data and
       link the device to its merchant.
-  - name: PosAuthorization
+  - name: pos-authorization
     description: |
       Authorize card transactions from a POS device.
 
@@ -55,7 +56,7 @@ paths:
         for a terminal to render the onboarding form. Public endpoint; no
         authentication required.
       tags:
-        - PosOnboarding
+        - pos-onboarding
       security: []
       responses:
         '200':
@@ -78,7 +79,7 @@ paths:
         identified by terminalSerialNumber to the resolved merchant. This
         endpoint requires no authentication.
       tags:
-        - PosOnboarding
+        - pos-onboarding
       security: []
       requestBody:
         required: true
@@ -116,7 +117,7 @@ paths:
       summary: Authorize POS transactions
       operationId: authorizeTransaction
       tags:
-        - PosAuthorization
+        - pos-authorization
       description: Authorize a transaction for a POS device.
       requestBody:
         required: true
@@ -286,7 +287,7 @@ components:
           city: Tampa, Florida
           postalCode: 33602
           settlementCurrency: USD
-          walletAddress: $ilp.dev/007
+          walletAddress: https://ilp.interledger-test.dev/007
           acceptedTerms: true
 
     OnboardingFormDefinitionExample:
@@ -329,13 +330,13 @@ components:
               format: email
               maxLength: 254
           - key: walletAddress
-            label: Wallet address / payment pointer
+            label: Wallet address
             type: text
             required: true
-            placeholder: $ilp.dev/007
+            placeholder: https://ilp.interledger-test.dev/007
             order: 15
             validation:
-              format: payment-pointer
+              format: uri
               maxLength: 200
           - key: acceptedTerms
             label: I accept the terms of service
@@ -409,7 +410,7 @@ components:
             city: Tampa, Florida
             postalCode: 33602
             settlementCurrency: USD
-            walletAddress: $ilp.dev/007
+            walletAddress: https://ilp.interledger-test.dev/007
             acceptedTerms: true
 
     FieldGroup:
@@ -561,8 +562,11 @@ components:
           type: string
           format: uuid
           x-go-type: string
-          description: Server-issued transaction identifier.
-          example: 3f6c2a8e-1b4d-4e7a-9c5f-8d2e1a0b7c64
+          description: |
+            Identifier of the authorization. The terminal generates it. Use a
+            new value for each authorization. The Merchant API sends this value
+            as `cardAuthorization.requestId` in the Open Payments grant request.
+          example: 018f8d2e-3c1a-7b6e-9f0a-2c4d6e8f0a1b
         sred:
           $ref: '#/components/schemas/AuthorizationSREDPayload'
         pin:
@@ -650,14 +654,15 @@ components:
       properties:
         id:
           type: string
-          description: Incoming payment resource identifier.
+          format: uri
+          description: The URL of the incoming payment.
           example: https://merchant.example/incoming-payments/4fbd8d6a-4d30-4c6a-82e8-1d6f75c6c7bf
         walletAddress:
           type: string
-          minLength: 1
+          format: uri
           x-oapi-codegen-extra-tags:
             sensitive: pii
-          description: Merchant wallet address used to create the incoming payment.
+          description: The URL of the merchant wallet address that receives the incoming payment.
           example: https://merchant.example/.well-known/pay
         expiresAt:
           type: string
@@ -721,6 +726,7 @@ components:
         - timestamp
         - terminalId
         - requestId
+        - data
       additionalProperties: false
       properties:
         timestamp:
@@ -734,8 +740,8 @@ components:
           example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
         requestId:
           type: string
-          description: POS request identifier from the request.
-          example: 3f6c2a8e-1b4d-4e7a-9c5f-8d2e1a0b7c64
+          description: The `requestId` from the request.
+          example: 018f8d2e-3c1a-7b6e-9f0a-2c4d6e8f0a1b
         data:
           $ref: '#/components/schemas/AuthorizationResponseData'
 
