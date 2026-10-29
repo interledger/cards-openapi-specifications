@@ -1,0 +1,49 @@
+name: Release
+
+# Runs on every merge to main and tags a new version from the conventional
+# commits since the last tag (see .releaserc.json):
+#   - BREAKING CHANGE / `!`  -> major
+#   - feat                   -> minor
+#   - fix                    -> patch
+#   - any other commit that changes a spec (*.yaml at the repo root) -> patch
+# Merges that touch neither a spec nor carry feat/fix/breaking commits
+# (e.g. CI or README only) produce no release.
+on:
+  push:
+    branches:
+      - main
+
+# Prevent two merges from racing to compute/tag the same version.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx --yes \
+            -p semantic-release@24 \
+            -p @semantic-release/exec@6 \
+            -p conventional-changelog-conventionalcommits@8 \
+            semantic-release
