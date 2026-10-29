@@ -3,22 +3,22 @@ info:
   title: Interledger Merchant POS API
   version: 0.1.0
   description: |
-    The **Interledger Merchant POS API** is the part of the Merchant API that
-    POS terminals call:
+    The **Interledger Merchant POS API** contains the Merchant API endpoints
+    that POS terminals call:
 
-    - **Onboarding** — the terminal retrieves the onboarding form, submits
-      the collected merchant data and is linked to its merchant.
+    - **Onboarding** — the terminal gets the onboarding form and submits the
+      merchant data. The API then links the terminal to its merchant.
     - **Authorization** — the terminal sends the kernel output of a card
-      transaction and receives the issuer's result.
+      transaction. The API returns the result of the issuer.
 
-    The management of merchants, locations, terminals and manufacturer
-    models is described separately in `merchant-api.yaml`.
+    `merchant-api.yaml` describes the management of merchants, locations,
+    terminals and manufacturer models.
 
     ## Authentication
 
-    Authorization requests carry the terminal's API key in the `X-API-Key`
-    header. The onboarding endpoints require no authentication, because the
-    terminal has no API key before it is onboarded.
+    An authorization request carries the API key of the terminal in the
+    `X-API-Key` header. The onboarding endpoints require no authentication.
+    A terminal has no API key before onboarding.
 
     ## Conventions
 
@@ -40,7 +40,7 @@ tags:
       link the device to its merchant.
   - name: PosAuthorization
     description: |
-      Authorization of card transactions initiated by a POS device.
+      Authorize card transactions from a POS device.
 
 security:
   - ApiKeyAuth: []
@@ -75,8 +75,8 @@ paths:
       description: >
         Submits merchant data collected on the terminal, validates it against the
         onboarding field model, verifies it via FSP and links the device
-        identified by terminalSerialNumber to the resolved merchant. Public
-        endpoint; no authentication required.
+        identified by terminalSerialNumber to the resolved merchant. This
+        endpoint requires no authentication.
       tags:
         - PosOnboarding
       security: []
@@ -146,7 +146,7 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
-      description: API key that authorizes a POS terminal to the Merchant API.
+      description: The API key of the POS terminal.
 
   responses:
     BadRequest:
@@ -214,19 +214,19 @@ components:
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     Conflict:
-      description: The onboarding form definition has expired or been superseded.
+      description: The definition token is expired, or a newer form definition replaces it.
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
           examples:
             definitionExpired:
-              summary: Definition token expired
+              summary: Definition token is expired
               value:
                 type: about:blank
                 title: Conflict
                 status: 409
-                detail: onboarding definition expired; fetch it again and resubmit
+                detail: definition token expired
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     InternalError:
@@ -375,12 +375,12 @@ components:
           x-oapi-codegen-extra-tags:
             sensitive: credential
           description: >
-            The opaque definitionToken returned by GET /v1/terminals/onboard for
-            the form the terminal rendered. The backend verifies the token's
-            signature and expiry and validates `data` against the exact field set
-            the token represents. Returns 400 if the token is missing/invalid and
-            409 if it has expired or been superseded (re-fetch the definition and
-            resubmit).
+            The `definitionToken` from `GET /v1/terminals/onboard`, for the form
+            that the terminal shows. The API verifies the signature and the
+            expiry of the token. The API then validates `data` against the field
+            set of the token. If the token is missing or not valid, the API
+            returns 400. If the token is expired or replaced, the API returns
+            409. Get the definition again, then submit again.
           example: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
         data:
           type: object
@@ -515,10 +515,10 @@ components:
           description: >
             Opaque, server-signed token representing this exact form definition
             (it embeds a hash of the served field set plus an expiry). The
-            terminal MUST send this value back unchanged in the matching
-            POST /v1/terminals/onboard submission so the backend
-            can validate the submitted data against the same field set that was
-            rendered. The token is stateless: the backend verifies its signature
+            terminal must send this value unchanged in its
+            `POST /v1/terminals/onboard` request. The API uses the value to
+            validate the submitted data against the same field set. The token
+            is stateless: the backend verifies its signature
             and hash without any stored session. Treat as opaque — do not parse.
           example: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
         title:

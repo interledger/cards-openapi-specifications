@@ -13,13 +13,13 @@ info:
     - **POS Terminals** — the devices that initiate card-present payment
       transactions at a location.
 
-    The endpoints that POS terminals call — onboarding and transaction
-    authorization — are described separately in `merchant-pos-api.yaml`.
+    POS terminals call other endpoints for onboarding and transaction
+    authorization. `merchant-pos-api.yaml` describes these endpoints.
 
     ## Authentication
 
-    No authentication scheme is defined yet. These endpoints must only be
-    reachable from trusted networks and must not be exposed publicly.
+    This API has no authentication scheme yet. Do not expose it publicly.
+    Make it reachable only from trusted networks.
 
     ## Conventions
 
@@ -45,9 +45,9 @@ info:
     1. Create a **Merchant** (`POST /v1/merchants`). It starts in
        `PENDING` status until activated.
     2. Create one or more **Locations** under that merchant.
-    3. Register **Terminals** under each location. The device itself then
-       completes the onboarding flow (see `merchant-pos-api.yaml`) to
-       submit the merchant data and link the device to its merchant.
+    3. Register **Terminals** under each location. The device then does the
+       onboarding (see `merchant-pos-api.yaml`). The device submits the
+       merchant data. The API links the device to its merchant.
     4. Register known **Manufacturer Models** before terminals or BDKs are
        attached to them.
 
@@ -394,9 +394,9 @@ paths:
         This call only creates the terminal *record* (serial number,
         manufacturer, model, EMV kernel). The supplied manufacturer/model
         must already be registered via `POST /v1/manufacturer-models`.
-        Onboarding — submitting the merchant data and linking the device to
-        its merchant — is performed separately by the device itself via
-        `POST /v1/terminals/onboard` (see `merchant-pos-api.yaml`).
+        The device does the onboarding with `POST /v1/terminals/onboard`
+        (see `merchant-pos-api.yaml`). The onboarding submits the merchant
+        data. The API then links the device to its merchant.
 
         The terminal's `serialNumber` must be unique within the system.
       requestBody:
