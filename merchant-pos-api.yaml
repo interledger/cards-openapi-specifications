@@ -104,6 +104,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         '404':
           $ref: "#/components/responses/NotFound"
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: "#/components/responses/UnprocessableContent"
         '500':
@@ -209,6 +211,22 @@ components:
                 title: Not Found
                 status: 404
                 detail: resource not found
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    Conflict:
+      description: The onboarding form definition has expired or been superseded.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            definitionExpired:
+              summary: Definition token expired
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                detail: onboarding definition expired; fetch it again and resubmit
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     InternalError:
@@ -544,7 +562,7 @@ components:
           format: uuid
           x-go-type: string
           description: Server-issued transaction identifier.
-          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
+          example: 3f6c2a8e-1b4d-4e7a-9c5f-8d2e1a0b7c64
         sred:
           $ref: '#/components/schemas/AuthorizationSREDPayload'
         pin:
@@ -626,7 +644,7 @@ components:
       description: Incoming payment transaction.
       required:
         - id
-        - paymentPointerUrl
+        - walletAddress
         - expiresAt
       additionalProperties: false
       properties:
@@ -717,7 +735,7 @@ components:
         requestId:
           type: string
           description: POS request identifier from the request.
-          example: req-20260529-000001
+          example: 3f6c2a8e-1b4d-4e7a-9c5f-8d2e1a0b7c64
         data:
           $ref: '#/components/schemas/AuthorizationResponseData'
 
