@@ -13,7 +13,13 @@ info:
     - **POS Terminals** — the devices that initiate card-present payment
       transactions at a location.
 
-    At the same time, Merchant API acts as an Open Payments client to facilitate payments.
+    The endpoints that POS terminals call — onboarding and transaction
+    authorization — are described separately in `merchant-pos-api.yaml`.
+
+    ## Authentication
+
+    No authentication scheme is defined yet. These endpoints must only be
+    reachable from trusted networks and must not be exposed publicly.
 
     ## Conventions
 
@@ -39,10 +45,9 @@ info:
     1. Create a **Merchant** (`POST /v1/merchants`). It starts in
        `PENDING` status until activated.
     2. Create one or more **Locations** under that merchant.
-    3. Register **Terminals** under each location, then complete the
-       onboarding flow (`POST /v1/terminals/onboard`) from the device
-       itself to submit the merchant data and link the device to its
-       merchant.
+    3. Register **Terminals** under each location. The device itself then
+       completes the onboarding flow (see `merchant-pos-api.yaml`) to
+       submit the merchant data and link the device to its merchant.
     4. Register known **Manufacturer Models** before terminals or BDKs are
        attached to them.
 
@@ -57,19 +62,14 @@ tags:
       Manage locations belonging to a merchant. A location represents a
       physical store, branch or any logical site at which terminals can
       be deployed.
-  - name: Point of Sale (POS)
+  - name: Terminal
     description: |
       Manage POS terminal records: registration metadata, EMV kernel
       configuration and lifecycle status.
-  - name: POS Manufacturer Models
+  - name: ManufacturerModel
     description: |
       Register known POS manufacturer/model combinations used to validate
       terminal registration and BDK storage.
-  - name: POS Onboarding
-    description: |
-      Onboarding flow executed by the POS device itself to retrieve the
-      onboarding form definition, submit the collected merchant data and
-      link the device to its merchant.
 
 paths:
   /v1/manufacturer-models:
@@ -77,7 +77,7 @@ paths:
       summary: Register manufacturer model
       operationId: registerManufacturerModel
       tags:
-        - POS Manufacturer Models
+        - ManufacturerModel
       description: |
         Register a known POS manufacturer/model combination.
 
@@ -387,7 +387,7 @@ paths:
       summary: Register POS terminal
       operationId: createTerminal
       tags:
-        - Point of Sale (POS)
+        - Terminal
       description: |
         Register a new POS terminal under the given location.
 
@@ -396,7 +396,7 @@ paths:
         must already be registered via `POST /v1/manufacturer-models`.
         Onboarding — submitting the merchant data and linking the device to
         its merchant — is performed separately by the device itself via
-        [`POST /v1/terminals/onboard`](#/operations/onboardTerminal).
+        `POST /v1/terminals/onboard` (see `merchant-pos-api.yaml`).
 
         The terminal's `serialNumber` must be unique within the system.
       requestBody:
@@ -425,7 +425,7 @@ paths:
       summary: List terminals for location
       operationId: listTerminals
       tags:
-        - Point of Sale (POS)
+        - Terminal
       description: |
         Return a paginated list of terminals registered at the given
         location, oldest-first (`createdAt` ascending, then `id`
@@ -454,7 +454,7 @@ paths:
       summary: Get terminal
       operationId: getTerminal
       tags:
-        - Point of Sale (POS)
+        - Terminal
       description: Retrieve a single terminal by its identifier.
       responses:
         '200':
@@ -486,7 +486,7 @@ paths:
 
         Invalid transitions return `409 Conflict`.
       tags:
-        - Point of Sale (POS)
+        - Terminal
       requestBody:
         required: true
         description: Subset of terminal fields to update. At least one field is required.
@@ -513,7 +513,7 @@ paths:
       summary: Delete terminal
       operationId: deleteTerminal
       tags:
-        - Point of Sale (POS)
+        - Terminal
       description: |
         Soft-delete a terminal. The associated certificate is revoked
         and the device will no longer be able to authenticate. Historical
@@ -525,93 +525,6 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /v1/terminals/onboard:
-    get:
-      operationId: getTerminalOnboardingDefinition
-      summary: Retrieve the terminal onboarding form definition
-      description: >
-        Returns the set of fields, their metadata and validation rules required
-        for a terminal to render the onboarding form. Public endpoint; no
-        authentication required.
-      tags:
-        - POS Onboarding
-      responses:
-        '200':
-          description: Onboarding form definition.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OnboardingFormDefinition'
-              examples:
-                default:
-                  $ref: '#/components/examples/OnboardingFormDefinitionExample'
-        '500':
-          $ref: '#/components/responses/InternalError'
-    post:
-      operationId: submitTerminalOnboarding
-      summary: Submit onboarding data and link a terminal to a merchant
-      description: >
-        Submits merchant data collected on the terminal, validates it against the
-        onboarding field model, verifies it via FSP and links the device
-        identified by terminalSerialNumber to the resolved merchant.
-      tags:
-        - POS Onboarding
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/OnboardingSubmission'
-            examples:
-              default:
-                $ref: '#/components/examples/OnboardingSubmissionExample'
-      responses:
-        '200':
-          description: >
-            Onboarding verified and terminal linked
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OnboardingResult'
-              examples:
-                linked:
-                  $ref: '#/components/examples/OnboardingResultExample'
-        '400':
-          $ref: "#/components/responses/BadRequest"
-        '404':
-          $ref: "#/components/responses/NotFound"
-        '422':
-          $ref: "#/components/responses/UnprocessableContent"
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /v1/transactions/authorize:
-    post:
-      summary: Authorize POS transactions
-      operationId: AuthorizeTransaction
-      tags:
-        - POS Authorization
-      description: Authorize a transaction for a POS device.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthorizationRequest'
-      responses:
-        '200':
-          description: |
-            The issuer decided. Its result is in `data.authorization`. A decline
-            is also a `200`: the ARC (EMV tag `8A`) gives the outcome.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthorizationResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -806,297 +719,8 @@ components:
                 detail: An unexpected error occurred
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
-    UnprocessableContent:
-      description: Unprocessable content
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
-          examples:
-            dataVerificationFailed:
-              summary: Content cannot be processed
-              value:
-                type: about:blank
-                title: Unprocessable Content
-                status: 422
-                detail: data cannot be processed by the upstream
-                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
-
-  examples:
-    OnboardingResultExample:
-      summary: Terminal linked
-      value:
-        status: LINKED
-        serialNumber: SN-AB12-9931
-        merchantId: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
-        linkedAt: "2026-06-01T10:15:30Z"
-    OnboardingSubmissionExample:
-      summary: Example submission
-      value:
-        definitionToken: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
-        data:
-          businessName: Interledger Foundation
-          legalEntityName: Interledger Foundation
-          registrationNumber: "12345678"
-          taxId: TAX123456789
-          merchantCategoryCode: "8398"
-          contactEmail: me@interledger.org
-          contactPhone: "+01 01 0000 0000"
-          country: US
-          addressLine1: 610 E Zack St
-          city: Tampa, Florida
-          postalCode: 33602
-          settlementCurrency: USD
-          walletAddress: $ilp.dev/007
-          acceptedTerms: true
-
-    OnboardingFormDefinitionExample:
-      summary: Example onboarding form definition
-      value:
-        version: "2026-06-01"
-        definitionToken: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
-        title: Merchant onboarding
-        fields:
-          - key: businessName
-            label: Business name
-            type: text
-            required: true
-            placeholder: Interledger Foundation
-            order: 1
-            validation:
-              minLength: 2
-              maxLength: 120
-          - key: merchantCategoryCode
-            label: Merchant category
-            type: select
-            required: true
-            order: 5
-            options:
-              - value: "5411"
-                label: Grocery stores / supermarkets
-              - value: "5812"
-                label: Eating places / restaurants
-              - value: "8389"
-                label: Charitable and Social Service Organizations
-              - value: "5999"
-                label: Miscellaneous retail
-          - key: contactEmail
-            label: Contact email
-            type: email
-            required: true
-            placeholder: me@interledger.org
-            order: 6
-            validation:
-              format: email
-              maxLength: 254
-          - key: walletAddress
-            label: Wallet address / payment pointer
-            type: text
-            required: true
-            placeholder: $ilp.dev/007
-            order: 15
-            validation:
-              format: payment-pointer
-              maxLength: 200
-          - key: acceptedTerms
-            label: I accept the terms of service
-            type: checkbox
-            required: true
-            order: 16
-            validation:
-              mustEqual: true
 
   schemas:
-    OnboardingResult:
-      type: object
-      required: [status, serialNumber, merchantId]
-      properties:
-        status:
-          type: string
-          description: Outcome of the onboarding submission; `ONBOARDED` when the terminal was successfully linked to the merchant.
-          example: ONBOARDED
-        serialNumber:
-          type: string
-          example: SN-AB12-9931
-        merchantId:
-          type: string
-          description: Identifier of the merchant the terminal is now linked to.
-          example: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
-        linkedAt:
-          type: string
-          format: date-time
-          example: "2026-06-01T10:15:30Z"
-
-    OnboardingSubmission:
-      type: object
-      required: [definitionToken, data]
-      properties:
-        definitionToken:
-          type: string
-          x-oapi-codegen-extra-tags:
-            sensitive: credential
-          description: >
-            The opaque definitionToken returned by GET /terminals/onboarding for
-            the form the terminal rendered. The backend verifies the token's
-            signature and expiry and validates `data` against the exact field set
-            the token represents. Returns 400 if the token is missing/invalid and
-            409 if it has expired or been superseded (re-fetch the definition and
-            resubmit).
-          example: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
-        data:
-          type: object
-          x-oapi-codegen-extra-tags:
-            sensitive: dynamic
-          description: >
-            Map of submitted values keyed by FieldDefinition.key.
-            Additional properties are the field values.
-          properties:
-            terminalSerialNumber:
-              type: string
-              description: Hardware serial number identifying the terminal.
-              example: SN-AB12-9931
-          additionalProperties: true
-          example:
-            terminalSerialNumber: SN-AB12-9931
-            businessName: Interledger Foundation
-            legalEntityName: Interledger Foundation
-            registrationNumber: "12345678"
-            taxId: TAX123456789
-            merchantCategoryCode: "8398"
-            contactEmail: me@interledger.org
-            contactPhone: "+01 01 0000 0000"
-            country: US
-            addressLine1: 610 E Zack St
-            city: Tampa, Florida
-            postalCode: 33602
-            settlementCurrency: USD
-            walletAddress: $ilp.dev/007
-            acceptedTerms: true
-
-    FieldGroup:
-      type: object
-      required: [key, label, order]
-      properties:
-        key:
-          type: string
-          example: business
-        label:
-          type: string
-          example: Business details
-        order:
-          type: integer
-          example: 1
-
-    FieldOption:
-      type: object
-      required: [value, label]
-      properties:
-        value:
-          type: string
-          example: "5411"
-        label:
-          type: string
-          example: Grocery stores / supermarkets
-
-    FieldValidation:
-      type: object
-      description: Declarative constraints. Clients ignore unknown keys.
-      properties:
-        minLength:
-          type: integer
-          example: 2
-        maxLength:
-          type: integer
-          example: 120
-        pattern:
-          type: string
-          description: ECMA-262 regular expression.
-          example: "^\\+?[0-9 ]{7,15}$"
-        min:
-          type: number
-        max:
-          type: number
-        format:
-          type: string
-          description: Semantic format hint.
-          example: email
-        mustEqual:
-          type: boolean
-          description: For checkbox consent fields, the value must equal this.
-
-    FieldDefinition:
-      type: object
-      required: [key, label, type, required, order]
-      properties:
-        key:
-          type: string
-          description: Identifier of the element, camelCase. Used as the property name in the submission payload.
-          example: businessName
-        label:
-          type: string
-          example: Business name
-        description:
-          type: string
-          description: Help text shown with the field.
-        type:
-          type: string
-          enum: [text, email, tel, number, select, checkbox, date]
-          example: text
-        required:
-          type: boolean
-          example: true
-        placeholder:
-          type: string
-          example: Interledger Foundation
-        order:
-          type: integer
-          example: 1
-        defaultValue:
-          description: Optional pre-filled value (type matches `type`).
-        options:
-          type: array
-          description: Allowed choices; required when type = select.
-          items:
-            $ref: '#/components/schemas/FieldOption'
-        validation:
-          $ref: '#/components/schemas/FieldValidation'
-
-    OnboardingFormDefinition:
-      type: object
-      required: [version, definitionToken, fields]
-      properties:
-        version:
-          type: string
-          description: Version identifier of this definition (for caching/compat).
-          example: "2026-06-01"
-        definitionToken:
-          type: string
-          x-oapi-codegen-extra-tags:
-            sensitive: credential
-          description: >
-            Opaque, server-signed token representing this exact form definition
-            (it embeds a hash of the served field set plus an expiry). The
-            terminal MUST send this value back unchanged in the matching
-            POST /terminals/{serialNumber}/onboarding submission so the backend
-            can validate the submitted data against the same field set that was
-            rendered. The token is stateless: the backend verifies its signature
-            and hash without any stored session. Treat as opaque — do not parse.
-          example: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
-        title:
-          type: string
-          description: Optional human-readable form title.
-          example: Merchant onboarding
-        groups:
-          type: array
-          description: Optional ordered section metadata for visual grouping.
-          items:
-            $ref: '#/components/schemas/FieldGroup'
-        fields:
-          type: array
-          description: The onboarding fields, to be rendered in ascending `order`.
-          items:
-            $ref: '#/components/schemas/FieldDefinition'
-
     NextCursor:
       type: string
       nullable: true
@@ -1635,241 +1259,6 @@ components:
           maxLength: 2
           pattern: '^[A-Z]{2}$'
           example: SI
-
-    AuthorizationRequest:
-      type: object
-      description: |
-        Authorization Request.
-
-        Only the fields needed to select keys and decrypt travel in the clear.
-        The PAN, amount, currency and both wallet addresses are carried inside
-        `sred` (see `AuthorizationSREDPayload`) and are read by the Merchant
-        API after SRED decryption.
-      required:
-        - terminalId
-        - requestId
-        - sred
-      additionalProperties: false
-      properties:
-        terminalId:
-          type: string
-          format: uuid
-          x-go-type: string
-          description: Server-issued terminal identifier.
-          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
-        requestId:
-          type: string
-          format: uuid
-          x-go-type: string
-          description: Server-issued transaction identifier.
-          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
-        sred:
-          $ref: '#/components/schemas/AuthorizationSREDPayload'
-        pin:
-          $ref: '#/components/schemas/AuthorizationPINPayload'
-
-    AuthorizationSREDPayload:
-      type: object
-      description: |
-        SRED encrypted EMV payload from the POS.
-        `cipherData` decrypts to a BER-TLV list holding the tags below.
-        | Tag      | Name                              | Presence | Notes |
-        |----------|-----------------------------------|----------|-------|
-        | `5A`     | Application PAN                   | Required | Used as the PIN translate input. |
-        | `5F34`   | PAN Sequence Number               | Optional | |
-        | `9F36`   | Application Transaction Counter   | Required | |
-        | `9F26`   | Application Cryptogram (ARQC)     | Required | |
-        | `9F10`   | Issuer Application Data           | Required | Part of the data the card signs into the ARQC. |
-        | `82`     | Application Interchange Profile   | Required | Part of the data the card signs into the ARQC. |
-        | `95`     | Terminal Verification Results     | Optional | |
-        | `DF31`   | CDOL1 Data                        | Required | Proprietary. The CDOL1 values as sent in GENERATE AC, layout below. |
-        | `DFF101` | Cardholder Wallet Address         | Required | Wallet the outgoing payment is created on. |
-        | `DFF102` | Merchant Wallet Address           | Required | Wallet the incoming payment is created on. |
-
-        `DF31` holds the CDOL1 values in the order the card's CDOL1 lists them.
-        example From the current card profile that is 56 bytes:
-
-        | Offset | Length | Tag      | Name                                |
-        |--------|--------|----------|-------------------------------------|
-        | 0      | 6      | `9F02`   | Amount, Authorised                  |
-        | 6      | 2      | `5F2A`   | Transaction Currency Code           |
-        | 8      | 1      | `5F36`   | Transaction Currency Exponent       |
-        | 9      | 3      | `9A`     | Transaction Date                    |
-        | 12     | 3      | `9F21`   | Transaction Time                    |
-        | 15     | 4      | `9F37`   | Unpredictable Number                |
-        | 19     | 2      | `9F1A`   | Terminal Country Code               |
-        | 21     | 3      | `9F34`   | CVM Results                         |
-        | 24     | 32     | `DFF104` | Merchant Wallet Address SHA-256     |
-      required:
-        - cipherData
-        - iv
-        - ksn
-      additionalProperties: false
-      properties:
-        cipherData:
-          type: string
-          format: byte
-          x-oapi-codegen-extra-tags:
-            sensitive: crypto_data
-          description: binary blob from the C-2 kernel output
-        iv:
-          type: string
-          format: byte
-          description: initialization vector accompanying the ciphertext on the C-2 kernel output.
-        ksn:
-          type: string
-          description: identifies the per-transaction DUKPT working key derived from the merchant iMEAK BDK.
-
-    AuthorizationPINPayload:
-      type: object
-      description: Optional encrypted PIN payload from the POS kernel.
-      required:
-        - ksn
-        - pinBlock
-      additionalProperties: false
-      properties:
-        ksn:
-          type: string
-          minLength: 1
-          description: identifies the POS's per-transaction DUKPT key derived from the iPEK.
-        pinBlock:
-          type: string
-          format: byte
-          x-oapi-codegen-extra-tags:
-            sensitive: credential
-          description: encrypted PIN block in ISO-9564 Format 4
-
-    AuthorizationIncomingPayment:
-      type: object
-      description: Incoming payment transaction.
-      required:
-        - id
-        - paymentPointerUrl
-        - expiresAt
-      additionalProperties: false
-      properties:
-        id:
-          type: string
-          description: Incoming payment resource identifier.
-          example: https://merchant.example/incoming-payments/4fbd8d6a-4d30-4c6a-82e8-1d6f75c6c7bf
-        walletAddress:
-          type: string
-          minLength: 1
-          x-oapi-codegen-extra-tags:
-            sensitive: pii
-          description: Merchant wallet address used to create the incoming payment.
-          example: https://merchant.example/.well-known/pay
-        expiresAt:
-          type: string
-          format: date-time
-          description: Expiry timestamp for the incoming payment.
-          example: "2026-05-29T12:34:56Z"
-
-    AuthorizationIssuerResult:
-      type: object
-      description: |
-        The issuer's authorization result, from `cardAuthorization` on the Open
-        Payments grant response. The POS has the final say on the transaction:
-        it reads the outcome from `arc` and passes `tlvData` to its kernel.
-      required:
-        - arc
-        - tlvData
-      additionalProperties: false
-      properties:
-        arc:
-          type: string
-          pattern: '^[0-9A-Z]{2}$'
-          description: |
-            Authorization Response Code (EMV tag `8A`). `00` approves. Other
-            approving codes exist, so read the outcome of a code from the
-            ISO 8583 / EMV ARC table, not from `00` alone.
-          example: "00"
-        authCode:
-          type: string
-          minLength: 1
-          maxLength: 6
-          description: Authorization code (EMV tag `89`). Present only on approval.
-          example: "A1B2C3"
-        tlvData:
-          type: string
-          pattern: '^([0-9A-F]{2})+$'
-          x-oapi-codegen-extra-tags:
-            sensitive: crypto_data
-          description: |
-            The issuer's result as hex-encoded BER-TLV: `8A`, and when present
-            `89` and `91` (Issuer Authentication Data, which carries the ARPC).
-            A contact kernel needs `8A` and `91` for the second GENERATE AC.
-          example: "8A023030890641314232433391081122334455667788"
-
-    AuthorizationResponseData:
-      type: object
-      description: Authorization data produced by completed authorization legs.
-      required:
-        - incomingPayment
-        - authorization
-      additionalProperties: false
-      properties:
-        incomingPayment:
-          $ref: '#/components/schemas/AuthorizationIncomingPayment'
-        authorization:
-          $ref: '#/components/schemas/AuthorizationIssuerResult'
-
-    AuthorizationTransactionResponse:
-      type: object
-      description: POS-facing transaction response body.
-      required:
-        - timestamp
-        - terminalId
-        - requestId
-      additionalProperties: false
-      properties:
-        timestamp:
-          type: string
-          format: date-time
-          description: Response timestamp.
-          example: "2026-05-29T12:34:56Z"
-        terminalId:
-          type: string
-          description: POS terminal identifier from the request.
-          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
-        requestId:
-          type: string
-          description: POS request identifier from the request.
-          example: req-20260529-000001
-        data:
-          $ref: '#/components/schemas/AuthorizationResponseData'
-
-    AuthorizationResponse:
-      type: object
-      description: POS-facing authorization response envelope.
-      required:
-        - transactionResponse
-      additionalProperties: false
-      properties:
-        transactionResponse:
-          $ref: '#/components/schemas/AuthorizationTransactionResponse'
-
-    WrappedKeys:
-      type: object
-      description: |
-        Operational keys delivered to the POS in a wrapped (encrypted)
-        key block, suitable for direct loading into the device's secure
-        element.
-      properties:
-        scheme:
-          type: string
-          example: TR-34
-          description: |
-            Identifier of the key-wrapping scheme used to protect the
-            payload (e.g. `TR-34`).
-        payload:
-          type: string
-          format: byte
-          x-oapi-codegen-extra-tags:
-            sensitive: crypto_key
-          description: |
-            Base64-encoded wrapped key block (TR-34–style), encrypted
-            for the requesting POS device.
 
     Problem:
       type: object
