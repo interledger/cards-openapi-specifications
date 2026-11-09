@@ -240,11 +240,11 @@ components:
         min:
           type: number
           format: double
-          description: Minimum number, or earliest date (ISO 8601).
+          description: Minimum value of a number field. Always a JSON number.
         max:
           type: number
           format: double
-          description: Maximum number, or latest date (ISO 8601).
+          description: Maximum value of a number field. Always a JSON number.
         format:
           type: string
           description: Semantic format hint (e.g. email, iso-country, payment-pointer).
