@@ -462,7 +462,7 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
-    put:
+    patch:
       summary: Change the PIN of a card
       description: |
         The issuer's HSM verifies the current PIN against the stored PIN
