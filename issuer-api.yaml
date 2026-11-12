@@ -403,6 +403,119 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /v1/card/{cardId}/pin:
+    post:
+      summary: Create the initial PIN of a card
+      description: |
+        The issuer's HSM generates a random PIN for the card. The Issuer API
+        stores only the PIN verification reference (IBM 3624 offset or Visa
+        PVV) and returns the PIN block, encrypted under the issuer's PIN
+        issuance key, for delivery to the cardholder. The PIN block is not
+        stored.
+
+        The Issuer API holds the PAN only encrypted and hashed, so the request
+        carries the PAN; it must be the PAN of the card.
+      operationId: createCardPin
+      tags:
+        - CardManagement
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          description: The unique identifier of the card
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCardPinRequest'
+            examples:
+              create:
+                summary: Create the initial PIN
+                value:
+                  pan: '4323111122221111'
+      responses:
+        '201':
+          description: PIN created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardPinCreated'
+              examples:
+                created:
+                  summary: PIN created with an IBM 3624 offset reference
+                  value:
+                    pinBlock: 4C1A2B3C4D5E6F708192A3B4C5D6E7F8
+                    pinBlockFormat: ISO_4
+                    pinMethod: IBM_OFFSET
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Change the PIN of a card
+      description: |
+        The issuer's HSM verifies the current PIN against the stored PIN
+        verification reference and, when it matches, the Issuer API replaces
+        the reference with that of the new PIN. Both PIN blocks are encrypted
+        under `pwk`, in the PIN block format the Issuer API is configured for.
+      operationId: changeCardPin
+      tags:
+        - CardManagement
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          description: The unique identifier of the card
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeCardPinRequest'
+            examples:
+              change:
+                summary: Change the PIN
+                value:
+                  pan: '4323111122221111'
+                  oldPinBlock: 4C1A2B3C4D5E6F708192A3B4C5D6E7F8
+                  newPinBlock: 9F8E7D6C5B4A39281706F5E4D3C2B1A0
+                  pwk:
+                    key: D0144P0AE00E0000A1B2C3D4E5F60718293A4B5C6D7E8F90A1B2C3D4E5F60718293A4B5C6D7E8F90A1B2C3D4E5F6071829
+                    kvc: 1A2B3C
+                    iv: ''
+      responses:
+        '200':
+          description: PIN changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardPinChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /v1/card/{cardId}:
     delete:
       summary: Delete a card
@@ -817,6 +930,91 @@ components:
       required:
         - reason
 
+    CreateCardPinRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - pan
+      properties:
+        pan:
+          type: string
+          pattern: '^[0-9]{12,19}$'
+          x-oapi-codegen-extra-tags:
+            sensitive: pci
+          description: The PAN of the card. It must match the card identified by `cardId`.
+
+    CardPinCreated:
+      type: object
+      additionalProperties: false
+      required:
+        - pinBlock
+        - pinBlockFormat
+        - pinMethod
+      properties:
+        pinBlock:
+          type: string
+          pattern: '^([0-9A-Fa-f]{2})+$'
+          x-oapi-codegen-extra-tags:
+            sensitive: credential
+          description: |
+            The generated PIN as a PIN block, encrypted under the issuer's PIN
+            issuance key, hex encoded. It is returned once and not stored.
+        pinBlockFormat:
+          type: string
+          enum:
+            - ISO_0
+            - ISO_3
+            - ISO_4
+          description: ISO 9564 format of `pinBlock`.
+        pinMethod:
+          type: string
+          enum:
+            - IBM_OFFSET
+            - PVV
+          description: The PIN verification method the stored reference uses.
+
+    ChangeCardPinRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - pan
+        - oldPinBlock
+        - newPinBlock
+        - pwk
+      properties:
+        pan:
+          type: string
+          pattern: '^[0-9]{12,19}$'
+          x-oapi-codegen-extra-tags:
+            sensitive: pci
+          description: The PAN of the card. It must match the card identified by `cardId`.
+        oldPinBlock:
+          type: string
+          pattern: '^([0-9A-Fa-f]{2})+$'
+          x-oapi-codegen-extra-tags:
+            sensitive: credential
+          description: The current PIN as a PIN block, encrypted under `pwk`, hex encoded.
+        newPinBlock:
+          type: string
+          pattern: '^([0-9A-Fa-f]{2})+$'
+          x-oapi-codegen-extra-tags:
+            sensitive: credential
+          description: The new PIN as a PIN block, encrypted under `pwk`, hex encoded.
+        pwk:
+          $ref: '#/components/schemas/PinWorkingKey'
+
+    CardPinChanged:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - changed
+          description: '`changed` when the new PIN replaced the current one.'
+
     OpenPaymentsWebhookEvent:
       type: object
       description: |
@@ -1029,6 +1227,30 @@ components:
             title: Not Found
             status: 404
             detail: card not found
+            instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+    Conflict:
+      description: Conflict
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Conflict
+            status: 409
+            detail: card already has a pin
+            instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+    UnprocessableEntity:
+      description: Unprocessable entity
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Unprocessable Entity
+            status: 422
+            detail: current pin is incorrect
             instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
     InternalServerError:
       description: Internal server error
