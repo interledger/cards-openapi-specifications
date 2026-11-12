@@ -43,9 +43,6 @@ tags:
     description: |
       Authorize card transactions from a POS device.
 
-security:
-  - ApiKeyAuth: []
-
 paths:
   /v1/terminals/onboard:
     get:
@@ -57,7 +54,6 @@ paths:
         authentication required.
       tags:
         - pos-onboarding
-      security: []
       responses:
         '200':
           description: Onboarding form definition.
@@ -82,7 +78,6 @@ paths:
         endpoint requires no authentication.
       tags:
         - pos-onboarding
-      security: []
       requestBody:
         required: true
         content:
@@ -123,6 +118,8 @@ paths:
       tags:
         - pos-authorization
       description: Authorize a transaction for a POS device.
+      security:
+        - ApiKeyAuth: []
       requestBody:
         required: true
         content:
