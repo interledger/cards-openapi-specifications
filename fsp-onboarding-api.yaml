@@ -1,0 +1,314 @@
+openapi: 3.0.3
+info:
+  title: FSP Onboarding API
+  version: 0.1.0
+  description: |
+    The **FSP Onboarding API** is the API an FSP (the ASE that holds the
+    merchant's account) exposes for terminal onboarding. The Merchant API calls
+    it; POS terminals never do.
+
+    - `GET` returns the fields the merchant fills in on the terminal. The
+      Merchant API serves them to the terminal through
+      `GET /v1/terminals/onboard` in `merchant-pos-api.yaml`.
+    - `POST` validates the values the merchant entered. The Merchant API sends
+      them from `POST /v1/terminals/onboard`, with the terminal's `merchantId`
+      added.
+
+    The FSP owns the fields and the validation rules.
+
+    ## One URL
+
+    Both operations are served on one URL. The Merchant API holds that full
+    URL in its `fsp.onboarding_api` setting and calls it as is: `GET` for the
+    fields, `POST` for validation. The path below is where the testnet wallet
+    backend serves it.
+
+    ## Authentication
+
+    Neither operation is authenticated.
+
+tags:
+  - name: onboarding
+    description: Terminal onboarding fields and validation.
+
+paths:
+  /terminals/onboarding:
+    get:
+      operationId: getOnboardingFields
+      summary: Get the onboarding fields
+      description: >
+        Returns the fields the merchant fills in on the terminal, with their
+        metadata and validation rules.
+      tags:
+        - onboarding
+      security: []
+      responses:
+        '200':
+          description: The onboarding fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldDefinitionsResponse'
+              examples:
+                default:
+                  $ref: '#/components/examples/FieldDefinitionsResponseExample'
+    post:
+      operationId: validateOnboardingData
+      summary: Validate onboarding data
+      description: >
+        Validates the values the merchant entered on the terminal against the
+        onboarding fields. The FSP strips properties it does not know.
+      tags:
+        - onboarding
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingValues'
+            examples:
+              default:
+                $ref: '#/components/examples/OnboardingValuesExample'
+      responses:
+        '200':
+          description: The values pass validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+              examples:
+                valid:
+                  $ref: '#/components/examples/ValidationResultExample'
+        '400':
+          description: |
+            The values fail validation. The body has one of two shapes:
+
+            - `{"valid": false, "error": {"field", "message"}}` when the wallet
+              address field names a wallet that does not exist.
+            - `{"success": false, "message", "errors": {"<key>": "<message>"}}`
+              when a field breaks its rules.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationRejection'
+              examples:
+                walletAddressNotFound:
+                  $ref: '#/components/examples/WalletAddressRejectionExample'
+                invalidInput:
+                  $ref: '#/components/examples/InvalidInputRejectionExample'
+
+components:
+  examples:
+    FieldDefinitionsResponseExample:
+      summary: Onboarding fields
+      value:
+        success: true
+        message: SUCCESS
+        result:
+          - key: merchantCategoryCode
+            label: Merchant category
+            type: select
+            required: true
+            order: 1
+            options:
+              - value: "5411"
+                label: Grocery stores / supermarkets
+              - value: "5812"
+                label: Eating places / restaurants
+          - key: contactEmail
+            label: Contact email
+            description: We use this to send onboarding confirmation.
+            type: email
+            required: true
+            placeholder: me@interledger.org
+            order: 2
+            validation:
+              format: email
+              maxLength: 255
+
+    OnboardingValuesExample:
+      summary: Values entered on the terminal
+      value:
+        merchantId: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
+        terminalSerialNumber: SN-AB12-9931
+        merchantCategoryCode: "5411"
+        contactEmail: me@interledger.org
+
+    ValidationResultExample:
+      summary: Values are valid
+      value:
+        valid: true
+        response:
+          merchantCategoryCode: "5411"
+          contactEmail: me@interledger.org
+
+    WalletAddressRejectionExample:
+      summary: Wallet address not found
+      value:
+        valid: false
+        error:
+          field: walletAddress
+          message: Wallet Address not found!
+
+    InvalidInputRejectionExample:
+      summary: A field breaks its rules
+      value:
+        success: false
+        message: Invalid input
+        errors:
+          contactEmail: Invalid email
+
+  schemas:
+    FieldDefinitionsResponse:
+      type: object
+      required: [success, result]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: SUCCESS
+        result:
+          type: array
+          description: The onboarding fields.
+          items:
+            $ref: '#/components/schemas/FieldDefinition'
+
+    FieldDefinition:
+      type: object
+      required: [key, label, type, required, order]
+      properties:
+        key:
+          type: string
+          description: Identifier of the field, camelCase. The property name of its value in the POST body.
+          example: contactEmail
+        label:
+          type: string
+          example: Contact email
+        description:
+          type: string
+          description: Help text shown with the field.
+        type:
+          type: string
+          enum: [text, email, tel, number, select, checkbox, date]
+          example: email
+        required:
+          type: boolean
+          example: true
+        placeholder:
+          type: string
+          example: me@interledger.org
+        order:
+          type: integer
+          description: Ascending render order.
+          example: 2
+        options:
+          type: array
+          description: Allowed choices; present when type = select.
+          items:
+            $ref: '#/components/schemas/FieldOption'
+        validation:
+          $ref: '#/components/schemas/FieldValidation'
+
+    FieldOption:
+      type: object
+      required: [value, label]
+      properties:
+        value:
+          type: string
+          example: "5411"
+        label:
+          type: string
+          example: Grocery stores / supermarkets
+
+    FieldValidation:
+      type: object
+      description: Declarative constraints. Clients ignore unknown keys.
+      properties:
+        minLength:
+          type: integer
+          example: 2
+        maxLength:
+          type: integer
+          example: 255
+        pattern:
+          type: string
+          description: ECMA-262 regular expression.
+          example: "^[0-9]+$"
+        min:
+          type: number
+          format: double
+          description: Minimum value of a number field. Always a JSON number.
+        max:
+          type: number
+          format: double
+          description: Maximum value of a number field. Always a JSON number.
+        format:
+          type: string
+          description: Semantic format hint (e.g. email, iso-country, payment-pointer).
+          example: email
+        mustEqual:
+          type: boolean
+          description: For checkbox consent fields, the value must equal this.
+
+    OnboardingValues:
+      type: object
+      x-oapi-codegen-extra-tags:
+        sensitive: dynamic
+      description: >
+        The values entered on the terminal, keyed by `FieldDefinition.key`,
+        plus `merchantId`.
+      properties:
+        merchantId:
+          type: string
+          description: The terminal's merchant in the Merchant API. The Merchant API adds it.
+          example: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
+      additionalProperties: true
+
+    ValidationResult:
+      type: object
+      required: [valid]
+      properties:
+        valid:
+          type: boolean
+          example: true
+        response:
+          type: object
+          x-oapi-codegen-extra-tags:
+            sensitive: dynamic
+          description: The validated values.
+          additionalProperties: true
+
+    ValidationRejection:
+      type: object
+      description: Either shape of a failed validation. Every property is optional.
+      properties:
+        valid:
+          type: boolean
+          example: false
+        error:
+          $ref: '#/components/schemas/ValidationRejectionError'
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Invalid input
+        errors:
+          type: object
+          description: Message per field key.
+          additionalProperties:
+            type: string
+
+    ValidationRejectionError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          example: walletAddress
+        message:
+          type: string
+          example: Wallet Address not found!

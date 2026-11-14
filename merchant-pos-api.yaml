@@ -43,9 +43,6 @@ tags:
     description: |
       Authorize card transactions from a POS device.
 
-security:
-  - ApiKeyAuth: []
-
 paths:
   /v1/terminals/onboard:
     get:
@@ -57,7 +54,6 @@ paths:
         authentication required.
       tags:
         - pos-onboarding
-      security: []
       responses:
         '200':
           description: Onboarding form definition.
@@ -70,6 +66,8 @@ paths:
                   $ref: '#/components/examples/OnboardingFormDefinitionExample'
         '500':
           $ref: '#/components/responses/InternalError'
+        '502':
+          $ref: '#/components/responses/BadGateway'
     post:
       operationId: submitTerminalOnboarding
       summary: Submit onboarding data and link a terminal to a merchant
@@ -80,7 +78,6 @@ paths:
         endpoint requires no authentication.
       tags:
         - pos-onboarding
-      security: []
       requestBody:
         required: true
         content:
@@ -111,6 +108,8 @@ paths:
           $ref: "#/components/responses/UnprocessableContent"
         '500':
           $ref: '#/components/responses/InternalError'
+        '502':
+          $ref: '#/components/responses/BadGateway'
 
   /v1/transactions/authorize:
     post:
@@ -119,6 +118,8 @@ paths:
       tags:
         - pos-authorization
       description: Authorize a transaction for a POS device.
+      security:
+        - ApiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -215,7 +216,7 @@ components:
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     Conflict:
-      description: The definition token is expired, or a newer form definition replaces it.
+      description: The definition token is expired, a newer form definition replaces it, or the terminal is not awaiting onboarding.
       content:
         application/problem+json:
           schema:
@@ -228,6 +229,30 @@ components:
                 title: Conflict
                 status: 409
                 detail: definition token expired
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            terminalNotOnboardable:
+              summary: Terminal is not awaiting onboarding
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                detail: terminal is not awaiting onboarding
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    BadGateway:
+      description: The FSP onboarding API could not be reached or answered unexpectedly.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            fspUnavailable:
+              summary: FSP onboarding API is unavailable
+              value:
+                type: about:blank
+                title: Bad Gateway
+                status: 502
+                detail: FSP onboarding API is unavailable
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     InternalError:
