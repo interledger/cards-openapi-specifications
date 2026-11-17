@@ -139,6 +139,23 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: |
+            The card data was already used: the SRED `ksn` was accepted before
+            for the same terminal model. The issuer is not asked.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                cardDataReused:
+                  summary: SRED KSN already used
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    detail: 'card data was already used: its KSN was accepted before'
+                    instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -647,7 +664,9 @@ components:
           description: initialization vector accompanying the ciphertext on the C-2 kernel output.
         ksn:
           type: string
-          description: identifies the per-transaction DUKPT working key derived from the merchant iMEAK BDK.
+          description: |
+            identifies the per-transaction DUKPT working key derived from the merchant iMEAK BDK.
+            A KSN is used once per terminal model; a repeat is refused with `409`.
 
     AuthorizationPINPayload:
       type: object
