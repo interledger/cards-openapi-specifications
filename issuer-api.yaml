@@ -570,6 +570,8 @@ paths:
           When the PIN Working Key (PWK) in `pwk` is not yet known, it is
           imported under the Zone Master Key (ZMK) the merchant and issuer
           share, and matched by its Key Check Value (KCV) afterwards.
+          A verified ARQC whose ATC (`9F36`) is not higher than the last one
+          accepted for the card is declined with ARC `94`.
         - Any other `type` is acknowledged and ignored.
 
         The Open Payments provider treats only a `200` as delivered and retries any other status.
