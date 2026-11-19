@@ -163,9 +163,11 @@ paths:
         - `approve` completes the payment.
         - `reject` cancels the transaction. No money moves.
 
-        The API returns `404` when the `requestId` is unknown or belongs to
-        another terminal, and `409` when the transaction is not in a state
-        the outcome can apply to (see `TransactionConflict`).
+        Repeating the outcome a transaction was finalized with returns the
+        same `200` again. The API returns `404` when the `requestId` is
+        unknown or belongs to another terminal, and `409` when the
+        transaction is not in a state the outcome can apply to (see
+        `TransactionConflict`). Problem `type` identifies each case.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -193,6 +195,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FinalizeResponse'
+        '202':
+          description: |
+            `approve` was accepted but the payment is not completed yet, and
+            may still complete. `data.status` is `pending`. Don't show success
+            or failure. Call `/finalize` again with `approve` to check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinalizeResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -205,8 +216,6 @@ paths:
           $ref: '#/components/responses/InternalError'
         '502':
           $ref: '#/components/responses/PaymentBadGateway'
-        '504':
-          $ref: '#/components/responses/PaymentTimeout'
 
 components:
   securitySchemes:
@@ -283,8 +292,8 @@ components:
             transactionNotFound:
               summary: No transaction to finalize
               value:
-                type: about:blank
-                title: Not Found
+                type: tag:interledger.org,2026:problems/transaction-not-found
+                title: Transaction not found
                 status: 404
                 detail: transaction not found
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
@@ -293,10 +302,10 @@ components:
       description: |
         The transaction is not in a state the request can apply to:
         - `/authorize`: the `requestId` was already used.
-        - `/finalize`: another call is finalizing the transaction, the
-          transaction is already finalized, the issuer declined it, or the
-          outcome is not allowed after an earlier error (`reject` after a
-          `504`, `approve` after a `502`).
+        - `/finalize`: another call is finalizing the transaction (retry
+          later), the transaction was finalized with the other outcome, the
+          issuer declined it, or the outcome is not allowed after an earlier
+          result (`reject` after a `202`, `approve` after a `502`).
       content:
         application/problem+json:
           schema:
@@ -305,40 +314,40 @@ components:
             requestIdUsed:
               summary: The requestId was already used
               value:
-                type: about:blank
-                title: Conflict
+                type: tag:interledger.org,2026:problems/request-id-used
+                title: Request id already used
                 status: 409
                 detail: request id already used
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
             transactionFinalizing:
               summary: Transaction is being finalized
               value:
-                type: about:blank
-                title: Conflict
+                type: tag:interledger.org,2026:problems/transaction-finalizing
+                title: Transaction is being finalized
                 status: 409
                 detail: transaction is being finalized
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
             transactionFinalized:
-              summary: Transaction is already finalized
+              summary: Transaction was finalized with the other outcome
               value:
-                type: about:blank
-                title: Conflict
+                type: tag:interledger.org,2026:problems/transaction-finalized
+                title: Transaction already finalized
                 status: 409
                 detail: transaction already finalized
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
             transactionNotApproved:
               summary: The issuer declined the transaction
               value:
-                type: about:blank
-                title: Conflict
+                type: tag:interledger.org,2026:problems/transaction-not-approved
+                title: Transaction not approved
                 status: 409
                 detail: transaction not approved
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
             outcomeNotAllowed:
-              summary: Outcome not allowed after an earlier error
+              summary: Outcome not allowed after an earlier result
               value:
-                type: about:blank
-                title: Conflict
+                type: tag:interledger.org,2026:problems/outcome-not-allowed
+                title: Outcome not allowed
                 status: 409
                 detail: outcome not allowed
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
@@ -355,37 +364,18 @@ components:
             paymentFailed:
               summary: Payment failed
               value:
-                type: about:blank
-                title: Bad Gateway
+                type: tag:interledger.org,2026:problems/payment-failed
+                title: Payment failed
                 status: 502
                 detail: payment failed
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
             cancellationFailed:
               summary: Cancellation failed
               value:
-                type: about:blank
-                title: Bad Gateway
+                type: tag:interledger.org,2026:problems/cancellation-failed
+                title: Cancellation failed
                 status: 502
                 detail: cancellation failed
-                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
-
-    PaymentTimeout:
-      description: |
-        The payment did not complete in time and may still complete. The
-        result is unknown: don't show success or failure. Call `/finalize`
-        again with `approve` to check.
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
-          examples:
-            paymentNotCompleted:
-              summary: Payment not completed in time
-              value:
-                type: about:blank
-                title: Gateway Timeout
-                status: 504
-                detail: payment not completed
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     Conflict:
@@ -993,16 +983,18 @@ components:
         status:
           type: string
           description: |
-            `completed`: the payment is completed. `rejected`: the transaction
-            is cancelled and no money moved.
+            `completed`: the payment is completed. `pending`: the payment is
+            not completed yet and may still complete. `rejected`: the
+            transaction is cancelled and no money moved.
           enum:
             - completed
+            - pending
             - rejected
           example: completed
         outgoingPaymentId:
           type: string
           format: uri
-          description: The URL of the outgoing payment. Present only when `status` is `completed`.
+          description: The URL of the outgoing payment. Present when `status` is `completed` or `pending`.
           example: https://cardholder.example/outgoing-payments/8c1e5f2a-7d3b-4e9c-a1f0-3b6d2c8e4a7f
 
     FinalizeTransactionResponse:
