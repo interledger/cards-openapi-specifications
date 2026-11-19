@@ -134,8 +134,7 @@ paths:
             The issuer decided. Its result is in `data.authorization`. A decline
             is also a `200`: the ARC (EMV tag `8A`) gives the outcome.
 
-            An approving ARC is held as an approval. No money moves until the
-            terminal calls `POST /v1/transactions/{requestId}/finalize`. A
+            After an approving ARC, no money moves until the terminal calls `POST /v1/transactions/{requestId}/finalize`. A
             declined authorization is not finalized.
           content:
             application/json:
@@ -159,11 +158,8 @@ paths:
         terminal calls this once, after `/v1/transactions/authorize` returned
         an approving ARC. The only retry is `reject` after a `502` on `reject`.
 
-        - `approve` creates the outgoing payment on the cardholder's wallet.
-          The API answers only after the merchant's incoming payment is
-          completed, which can take up to the server's poll timeout (10 s by
-          default). Set the client timeout above that.
-        - `reject` cancels the issuer's approval. No money moves.
+        - `approve` completes the payment.
+        - `reject` cancels the transaction. No money moves.
 
         After an issuer decline there is nothing to finalize, and the API
         returns `404`. The API also returns `404` when the `requestId` is
@@ -309,50 +305,47 @@ components:
 
     PaymentBadGateway:
       description: |
-        Open Payments failed: creating the outgoing payment, or revoking the
-        grant. After a `502` on `approve` no money moved and the transaction
-        is closed; calling `/finalize` again returns `404`. After a `502` on
-        `reject` the terminal can call `/finalize` again with `reject`.
+        The payment or the cancellation failed upstream. After a `502` on
+        `approve` no money moved and the transaction is closed. After a `502`
+        on `reject` the terminal can call `/finalize` again with `reject`.
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
           examples:
-            outgoingPaymentFailed:
-              summary: Outgoing payment could not be created
+            paymentFailed:
+              summary: Payment failed
               value:
                 type: about:blank
                 title: Bad Gateway
                 status: 502
-                detail: outgoing payment failed
+                detail: payment failed
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
-            grantRevokeFailed:
-              summary: Grant could not be revoked
+            cancellationFailed:
+              summary: Cancellation failed
               value:
                 type: about:blank
                 title: Bad Gateway
                 status: 502
-                detail: grant revoke failed
+                detail: cancellation failed
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     PaymentTimeout:
       description: |
-        The incoming payment did not complete in time. The outgoing payment
-        exists and may still complete, so the result is unknown. Don't show
-        success or failure, and don't ask the cardholder to pay again.
-        Calling `/finalize` again returns `404`.
+        The payment did not complete in time and may still complete. The
+        result is unknown: don't show success or failure.
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
           examples:
-            incomingPaymentNotCompleted:
-              summary: Incoming payment not completed in time
+            paymentNotCompleted:
+              summary: Payment not completed in time
               value:
                 type: about:blank
                 title: Gateway Timeout
                 status: 504
-                detail: incoming payment not completed
+                detail: payment not completed
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     Conflict:
@@ -960,9 +953,8 @@ components:
         status:
           type: string
           description: |
-            `completed`: the outgoing payment was created and the merchant's
-            incoming payment is completed. `rejected`: the issuer's approval
-            was cancelled and no money moved.
+            `completed`: the payment is completed. `rejected`: the transaction
+            is cancelled and no money moved.
           enum:
             - completed
             - rejected
