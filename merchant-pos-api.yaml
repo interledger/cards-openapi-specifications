@@ -154,9 +154,8 @@ paths:
       tags:
         - pos-authorization
       description: |
-        Sends the final decision of the terminal on an authorization. The
-        terminal calls this once, after `/v1/transactions/authorize` returned
-        an approving ARC. The only retry is `reject` after a `502` on `reject`.
+        Sends the final decision of the terminal on an authorization, after
+        `/v1/transactions/authorize` returned an approving ARC.
 
         - `approve` completes the payment.
         - `reject` cancels the transaction. No money moves.
