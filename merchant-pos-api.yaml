@@ -134,8 +134,9 @@ paths:
             The issuer decided. Its result is in `data.authorization`. A decline
             is also a `200`: the ARC (EMV tag `8A`) gives the outcome.
 
-            After an approving ARC, no money moves until the terminal calls `POST /v1/transactions/{requestId}/finalize`. A
-            declined authorization is not finalized.
+            After an approving ARC, no money moves until the terminal calls
+            `POST /v1/transactions/{requestId}/finalize`. A declined
+            authorization is not finalized.
           content:
             application/json:
               schema:
@@ -144,6 +145,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/TransactionConflict'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -160,9 +163,9 @@ paths:
         - `approve` completes the payment.
         - `reject` cancels the transaction. No money moves.
 
-        After an issuer decline there is nothing to finalize, and the API
-        returns `404`. The API also returns `404` when the `requestId` is
-        unknown, is already finalized, or belongs to another terminal.
+        The API returns `404` when the `requestId` is unknown or belongs to
+        another terminal, and `409` when the transaction is not in a state
+        the outcome can apply to (see `TransactionConflict`).
       security:
         - ApiKeyAuth: []
       parameters:
@@ -287,12 +290,26 @@ components:
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     TransactionConflict:
-      description: The transaction is being finalized by another call.
+      description: |
+        The transaction is not in a state the request can apply to:
+        - `/authorize`: the `requestId` was already used.
+        - `/finalize`: another call is finalizing the transaction, the
+          transaction is already finalized, the issuer declined it, or the
+          outcome is not allowed after an earlier error (`reject` after a
+          `504`, `approve` after a `502`).
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
           examples:
+            requestIdUsed:
+              summary: The requestId was already used
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                detail: request id already used
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
             transactionFinalizing:
               summary: Transaction is being finalized
               value:
@@ -301,12 +318,35 @@ components:
                 status: 409
                 detail: transaction is being finalized
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            transactionFinalized:
+              summary: Transaction is already finalized
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                detail: transaction already finalized
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            transactionNotApproved:
+              summary: The issuer declined the transaction
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                detail: transaction not approved
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            outcomeNotAllowed:
+              summary: Outcome not allowed after an earlier error
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                detail: outcome not allowed
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     PaymentBadGateway:
       description: |
-        The payment or the cancellation failed upstream. After a `502` on
-        `approve` no money moved and the transaction is closed. After a `502`
-        on `reject` the terminal can call `/finalize` again with `reject`.
+        The payment or the cancellation failed upstream. After a `502` the
+        terminal can call `/finalize` again with `reject`.
       content:
         application/problem+json:
           schema:
@@ -332,7 +372,8 @@ components:
     PaymentTimeout:
       description: |
         The payment did not complete in time and may still complete. The
-        result is unknown: don't show success or failure.
+        result is unknown: don't show success or failure. Call `/finalize`
+        again with `approve` to check.
       content:
         application/problem+json:
           schema:
