@@ -301,11 +301,14 @@ components:
     TransactionConflict:
       description: |
         The transaction is not in a state the request can apply to:
-        - `/authorize`: the `requestId` was already used.
-        - `/finalize`: another call is finalizing the transaction (retry
-          later), the transaction was finalized with the other outcome, the
-          issuer declined it, or the outcome is not allowed after an earlier
-          result (`reject` after a `202`, `approve` after a `502`).
+        - `request-id-used`: `/authorize` with a `requestId` that was already
+          used. Use a new `requestId`.
+        - `transaction-finalizing`: another `/finalize` call for the
+          transaction is running. Retry later.
+        - `outcome-not-allowed`: the transaction's state doesn't allow this
+          outcome, for example the opposite outcome on a finalized
+          transaction, `reject` after a `202`, `approve` after a `502`, or
+          any outcome after the issuer declined.
       content:
         application/problem+json:
           schema:
@@ -327,24 +330,8 @@ components:
                 status: 409
                 detail: transaction is being finalized
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
-            transactionFinalized:
-              summary: Transaction was finalized with the other outcome
-              value:
-                type: tag:interledger.org,2026:problems/transaction-finalized
-                title: Transaction already finalized
-                status: 409
-                detail: transaction already finalized
-                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
-            transactionNotApproved:
-              summary: The issuer declined the transaction
-              value:
-                type: tag:interledger.org,2026:problems/transaction-not-approved
-                title: Transaction not approved
-                status: 409
-                detail: transaction not approved
-                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
             outcomeNotAllowed:
-              summary: Outcome not allowed after an earlier result
+              summary: The transaction's state doesn't allow this outcome
               value:
                 type: tag:interledger.org,2026:problems/outcome-not-allowed
                 title: Outcome not allowed
@@ -364,16 +351,16 @@ components:
             paymentFailed:
               summary: Payment failed
               value:
-                type: tag:interledger.org,2026:problems/payment-failed
-                title: Payment failed
+                type: tag:interledger.org,2026:problems/upstream-failed
+                title: Upstream failed
                 status: 502
                 detail: payment failed
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
             cancellationFailed:
               summary: Cancellation failed
               value:
-                type: tag:interledger.org,2026:problems/cancellation-failed
-                title: Cancellation failed
+                type: tag:interledger.org,2026:problems/upstream-failed
+                title: Upstream failed
                 status: 502
                 detail: cancellation failed
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
