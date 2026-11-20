@@ -10,14 +10,16 @@ info:
       merchant data. The API then links the terminal to its merchant.
     - **Authorization** — the terminal sends the kernel output of a card
       transaction. The API returns the result of the issuer.
+    - **Finalization** — the terminal sends its final decision on an approved
+      authorization. Only an approval moves money.
 
     `merchant-api.yaml` describes the management of merchants, locations,
     terminals and manufacturer models.
 
     ## Authentication
 
-    An authorization request carries the API key of the terminal in the
-    `X-API-Key` header. The onboarding endpoints require no authentication.
+    Authorization and finalization requests carry the API key of the
+    terminal in the `X-API-Key` header. The onboarding endpoints require no authentication.
     A terminal has no API key before onboarding.
 
     ## Conventions
@@ -41,7 +43,7 @@ tags:
       link the device to its merchant.
   - name: pos-authorization
     description: |
-      Authorize card transactions from a POS device.
+      Authorize and finalize card transactions from a POS device.
 
 paths:
   /v1/terminals/onboard:
@@ -131,6 +133,10 @@ paths:
           description: |
             The issuer decided. Its result is in `data.authorization`. A decline
             is also a `200`: the ARC (EMV tag `8A`) gives the outcome.
+
+            After an approving ARC, no money moves until the terminal calls
+            `POST /v1/transactions/{requestId}/finalize`. A declined
+            authorization is not finalized.
           content:
             application/json:
               schema:
@@ -139,8 +145,77 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/TransactionConflict'
         '500':
           $ref: '#/components/responses/InternalError'
+
+  /v1/transactions/{requestId}/finalize:
+    post:
+      summary: Finalize an approved POS transaction
+      operationId: finalizeTransaction
+      tags:
+        - pos-authorization
+      description: |
+        Sends the final decision of the terminal on an authorization, after
+        `/v1/transactions/authorize` returned an approving ARC.
+
+        - `approve` completes the payment.
+        - `reject` cancels the transaction. No money moves.
+
+        Repeating the outcome a transaction was finalized with returns the
+        same `200` again. The API returns `404` when the `requestId` is
+        unknown or belongs to another terminal, and `409` when the
+        transaction is not in a state the outcome can apply to (see
+        `TransactionConflict`). Problem `type` identifies each case.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          description: The `requestId` of the approved `/v1/transactions/authorize` call.
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+          example: 018f8d2e-3c1a-7b6e-9f0a-2c4d6e8f0a1b
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinalizeRequest'
+      responses:
+        '200':
+          description: |
+            The transaction is finalized. `data.status` is `completed` after
+            `approve` and `rejected` after `reject`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinalizeResponse'
+        '202':
+          description: |
+            `approve` was accepted but the payment is not completed yet, and
+            may still complete. `data.status` is `pending`. Don't show success
+            or failure. Call `/finalize` again with `approve` to check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinalizeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TransactionConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '502':
+          $ref: '#/components/responses/PaymentBadGateway'
 
 components:
   securitySchemes:
@@ -213,6 +288,81 @@ components:
                 title: Not Found
                 status: 404
                 detail: resource not found
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            transactionNotFound:
+              summary: No transaction to finalize
+              value:
+                type: tag:interledger.org,2026:problems/transaction-not-found
+                title: Transaction not found
+                status: 404
+                detail: transaction not found
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    TransactionConflict:
+      description: |
+        The transaction is not in a state the request can apply to:
+        - `request-id-used`: `/authorize` with a `requestId` that was already
+          used. Use a new `requestId`.
+        - `transaction-finalizing`: another `/finalize` call for the
+          transaction is running. Retry later.
+        - `outcome-not-allowed`: the transaction's state doesn't allow this
+          outcome, for example the opposite outcome on a finalized
+          transaction, `reject` after a `202`, `approve` after a `502`, or
+          any outcome after the issuer declined.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            requestIdUsed:
+              summary: The requestId was already used
+              value:
+                type: tag:interledger.org,2026:problems/request-id-used
+                title: Request id already used
+                status: 409
+                detail: request id already used
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            transactionFinalizing:
+              summary: Transaction is being finalized
+              value:
+                type: tag:interledger.org,2026:problems/transaction-finalizing
+                title: Transaction is being finalized
+                status: 409
+                detail: transaction is being finalized
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            outcomeNotAllowed:
+              summary: The transaction's state doesn't allow this outcome
+              value:
+                type: tag:interledger.org,2026:problems/outcome-not-allowed
+                title: Outcome not allowed
+                status: 409
+                detail: outcome not allowed
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    PaymentBadGateway:
+      description: |
+        The payment or the cancellation failed upstream. After a `502` the
+        terminal can call `/finalize` again with `reject`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            paymentFailed:
+              summary: Payment failed
+              value:
+                type: tag:interledger.org,2026:problems/upstream-failed
+                title: Upstream failed
+                status: 502
+                detail: payment failed
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+            cancellationFailed:
+              summary: Cancellation failed
+              value:
+                type: tag:interledger.org,2026:problems/upstream-failed
+                title: Upstream failed
+                status: 502
+                detail: cancellation failed
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     Conflict:
@@ -700,7 +850,8 @@ components:
       description: |
         The issuer's authorization result, from `cardAuthorization` on the Open
         Payments grant response. The POS has the final say on the transaction:
-        it reads the outcome from `arc` and passes `tlvData` to its kernel.
+        it reads the outcome from `arc`, passes `tlvData` to its kernel, and
+        reports its decision with `POST /v1/transactions/{requestId}/finalize`.
       required:
         - arc
         - tlvData
@@ -779,6 +930,95 @@ components:
       properties:
         transactionResponse:
           $ref: '#/components/schemas/AuthorizationTransactionResponse'
+
+    FinalizeRequest:
+      type: object
+      description: The final decision of the terminal on an approved authorization.
+      required:
+        - terminalId
+        - outcome
+      additionalProperties: false
+      properties:
+        terminalId:
+          type: string
+          format: uuid
+          x-go-type: string
+          description: |
+            Server-issued terminal identifier. Must be the terminal that sent
+            `/v1/transactions/authorize`.
+          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
+        outcome:
+          $ref: '#/components/schemas/FinalizeOutcome'
+
+    FinalizeOutcome:
+      type: string
+      description: |
+        `approve`: the terminal accepts the transaction. `reject`: the terminal
+        or the card declined it, or the cardholder cancelled.
+      enum:
+        - approve
+        - reject
+      example: approve
+
+    FinalizeResponseData:
+      type: object
+      description: Result of the finalization.
+      required:
+        - status
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          description: |
+            `completed`: the payment is completed. `pending`: the payment is
+            not completed yet and may still complete. `rejected`: the
+            transaction is cancelled and no money moved.
+          enum:
+            - completed
+            - pending
+            - rejected
+          example: completed
+        outgoingPaymentId:
+          type: string
+          format: uri
+          description: The URL of the outgoing payment. Present when `status` is `completed` or `pending`.
+          example: https://cardholder.example/outgoing-payments/8c1e5f2a-7d3b-4e9c-a1f0-3b6d2c8e4a7f
+
+    FinalizeTransactionResponse:
+      type: object
+      description: POS-facing finalization response body.
+      required:
+        - timestamp
+        - terminalId
+        - requestId
+        - data
+      additionalProperties: false
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Response timestamp.
+          example: "2026-05-29T12:34:58Z"
+        terminalId:
+          type: string
+          description: POS terminal identifier from the request.
+          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
+        requestId:
+          type: string
+          description: The `requestId` from the path.
+          example: 018f8d2e-3c1a-7b6e-9f0a-2c4d6e8f0a1b
+        data:
+          $ref: '#/components/schemas/FinalizeResponseData'
+
+    FinalizeResponse:
+      type: object
+      description: POS-facing finalization response envelope.
+      required:
+        - transactionResponse
+      additionalProperties: false
+      properties:
+        transactionResponse:
+          $ref: '#/components/schemas/FinalizeTransactionResponse'
 
     WrappedKeys:
       type: object
