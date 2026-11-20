@@ -566,14 +566,19 @@ paths:
 
         - `card_authorization_requested`: The Open Payments provider received an Open Payments
           grant request whose outgoing-payment access carries a
-          `cardAuthorization`. The Issuer API authorizes the card transaction.
+          `cardAuthorization`. The Issuer API records the request, answers
+          `200`, and then authorizes the card transaction. The outcome goes to
+          the provider's `card auth verified` endpoint: `approved` or
+          `declined`, or `failed` with a reason when no decision could be
+          made. A `requestId` that was received before is not authorized
+          again; its outcome is sent again once decided.
           When the PIN Working Key (PWK) in `pwk` is not yet known, it is
           imported under the Zone Master Key (ZMK) the merchant and issuer
           share, and matched by its Key Check Value (KCV) afterwards.
         - Any other `type` is acknowledged and ignored.
 
         The Open Payments provider treats only a `200` as delivered and retries any other status.
-        A declined authorization is a successful outcome and returns `200`.
+        A `400` means the event can never be processed.
 
         When a webhook signing secret is configured, the `OpenPayments-Signature`
         header is required. It has the form `t=<unix ms>, v1=<hex>`, where the
@@ -610,7 +615,7 @@ paths:
                         iv: ''
       responses:
         '200':
-          description: Event processed or ignored
+          description: Event accepted or ignored
           content:
             application/json:
               schema:
@@ -1121,11 +1126,11 @@ components:
         status:
           type: string
           enum:
-            - processed
+            - accepted
             - ignored
           description: |
-            `processed` when the event was handled; `ignored` for an event
-            type the Issuer API does not handle.
+            `accepted` when the event was recorded for processing; `ignored`
+            for an event type the Issuer API does not handle.
 
     Problem:
       type: object
