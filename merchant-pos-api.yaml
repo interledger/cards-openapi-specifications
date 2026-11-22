@@ -7,7 +7,8 @@ info:
     that POS terminals call:
 
     - **Onboarding** — the terminal gets the onboarding form and submits the
-      merchant data. The API then links the terminal to its merchant.
+      merchant data. The API then links the terminal to its merchant and
+      returns the terminal's API key.
     - **Authorization** — the terminal sends the kernel output of a card
       transaction. The API returns the result of the issuer.
     - **Finalization** — the terminal sends its final decision on an approved
@@ -21,6 +22,11 @@ info:
     Authorization and finalization requests carry the API key of the
     terminal in the `X-API-Key` header. The onboarding endpoints require no authentication.
     A terminal has no API key before onboarding.
+
+    A successful onboarding returns the API key once. An API key belongs to
+    one terminal, and a terminal has at most one. The key stops working when
+    the terminal is reset, revoked or deleted. A terminal that lost its key is
+    reset by an operator and onboarded again.
 
     ## Conventions
 
@@ -46,14 +52,17 @@ tags:
       Authorize and finalize card transactions from a POS device.
 
 paths:
-  /v1/terminals/onboard:
+  /v1/terminals/{serialNumber}/onboard:
+    parameters:
+      - $ref: '#/components/parameters/SerialNumber'
     get:
       operationId: getTerminalOnboardingDefinition
       summary: Retrieve the terminal onboarding form definition
       description: >
         Returns the set of fields, their metadata and validation rules required
-        for a terminal to render the onboarding form. Public endpoint; no
-        authentication required.
+        for a terminal to render the onboarding form. The FSP chooses the fields
+        for the merchant of the terminal. Public endpoint; no authentication
+        required.
       tags:
         - pos-onboarding
       responses:
@@ -66,6 +75,12 @@ paths:
               examples:
                 default:
                   $ref: '#/components/examples/OnboardingFormDefinitionExample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
         '502':
@@ -75,9 +90,10 @@ paths:
       summary: Submit onboarding data and link a terminal to a merchant
       description: >
         Submits merchant data collected on the terminal, validates it against the
-        onboarding field model, verifies it via FSP and links the device
-        identified by terminalSerialNumber to the resolved merchant. This
-        endpoint requires no authentication.
+        onboarding field model, verifies it via FSP and links the terminal with
+        this serial number to its merchant. The terminal becomes `ACTIVE` and
+        the response carries its API key. This endpoint requires no
+        authentication.
       tags:
         - pos-onboarding
       requestBody:
@@ -92,7 +108,8 @@ paths:
       responses:
         '200':
           description: >
-            Onboarding verified and terminal linked
+            Onboarding verified and terminal linked. The only response that
+            carries the API key.
           content:
             application/json:
               schema:
@@ -119,7 +136,12 @@ paths:
       operationId: authorizeTransaction
       tags:
         - pos-authorization
-      description: Authorize a transaction for a POS device.
+      description: |
+        Authorize a transaction for a POS device.
+
+        Only an `ACTIVE` terminal can authorize; another terminal with a valid
+        API key gets `403`. The API returns `404` when `terminalId` is unknown
+        or is not the terminal of the API key.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -145,6 +167,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/TransactionConflict'
         '500':
@@ -165,9 +191,12 @@ paths:
 
         Repeating the outcome a transaction was finalized with returns the
         same `200` again. The API returns `404` when the `requestId` is
-        unknown or belongs to another terminal, and `409` when the
+        unknown or belongs to another terminal, or when `terminalId` is not
+        the terminal of the API key, and `409` when the
         transaction is not in a state the outcome can apply to (see
         `TransactionConflict`). Problem `type` identifies each case.
+
+        A terminal that was suspended after `/authorize` can still finalize.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -218,12 +247,24 @@ paths:
           $ref: '#/components/responses/PaymentBadGateway'
 
 components:
+  parameters:
+    SerialNumber:
+      name: serialNumber
+      in: path
+      required: true
+      description: Hardware serial number of the terminal, percent-encoded.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+      example: SN-AB12-9931
+
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
       in: header
       name: X-API-Key
-      description: The API key of the POS terminal.
+      description: The API key that the terminal received at onboarding.
 
   responses:
     BadRequest:
@@ -272,6 +313,22 @@ components:
                 title: Unauthorized
                 status: 401
                 detail: Authentication credentials are invalid or expired.
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    Forbidden:
+      description: The API key is valid, but the terminal is not `ACTIVE`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            terminalNotActive:
+              summary: Terminal is not active
+              value:
+                type: about:blank
+                title: Forbidden
+                status: 403
+                detail: terminal is not active
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     NotFound:
@@ -441,9 +498,11 @@ components:
     OnboardingResultExample:
       summary: Terminal linked
       value:
-        status: ONBOARDED
+        status: ACTIVE
+        terminalId: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
         serialNumber: SN-AB12-9931
         merchantId: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
+        apiKey: ilfpos_EXAMPLE-not-a-real-key-0000000000000000000
         linkedAt: "2026-06-01T10:15:30Z"
     OnboardingSubmissionExample:
       summary: Example submission
@@ -524,12 +583,18 @@ components:
   schemas:
     OnboardingResult:
       type: object
-      required: [status, serialNumber, merchantId]
+      required: [status, terminalId, serialNumber, merchantId, apiKey]
       properties:
         status:
           type: string
-          description: Outcome of the onboarding submission; `ONBOARDED` when the terminal was successfully linked to the merchant.
-          example: ONBOARDED
+          description: Outcome of the onboarding submission; `ACTIVE` when the terminal was successfully linked to the merchant and can take payments.
+          example: ACTIVE
+        terminalId:
+          type: string
+          format: uuid
+          x-go-type: string
+          description: Server-issued terminal identifier. The terminal sends it in its transaction requests.
+          example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
         serialNumber:
           type: string
           example: SN-AB12-9931
@@ -537,6 +602,14 @@ components:
           type: string
           description: Identifier of the merchant the terminal is now linked to.
           example: 7c1f4f9a-4b8e-4c7e-9c2a-2c5d4f2a1b3e
+        apiKey:
+          type: string
+          x-oapi-codegen-extra-tags:
+            sensitive: credential
+          description: >
+            The API key of the terminal, for the `X-API-Key` header. It is
+            returned only here and cannot be read again. Opaque; do not parse.
+          example: ilfpos_EXAMPLE-not-a-real-key-0000000000000000000
         linkedAt:
           type: string
           format: date-time
@@ -551,9 +624,11 @@ components:
           x-oapi-codegen-extra-tags:
             sensitive: credential
           description: >
-            The `definitionToken` from `GET /v1/terminals/onboard`, for the form
+            The `definitionToken` from
+            `GET /v1/terminals/{serialNumber}/onboard`, for the form
             that the terminal shows. The API verifies the signature and the
-            expiry of the token. The API then validates `data` against the field
+            expiry of the token, and that the token was issued for this serial
+            number. The API then validates `data` against the field
             set of the token. If the token is missing or not valid, the API
             returns 400. If the token is expired or replaced, the API returns
             409. Get the definition again, then submit again.
@@ -564,15 +639,8 @@ components:
             sensitive: dynamic
           description: >
             Map of submitted values keyed by FieldDefinition.key.
-            Additional properties are the field values.
-          properties:
-            terminalSerialNumber:
-              type: string
-              description: Hardware serial number identifying the terminal.
-              example: SN-AB12-9931
           additionalProperties: true
           example:
-            terminalSerialNumber: SN-AB12-9931
             businessName: Interledger Foundation
             legalEntityName: Interledger Foundation
             registrationNumber: "12345678"
@@ -690,9 +758,9 @@ components:
             sensitive: credential
           description: >
             Opaque, server-signed token representing this exact form definition
-            (it embeds a hash of the served field set plus an expiry). The
-            terminal must send this value unchanged in its
-            `POST /v1/terminals/onboard` request. The API uses the value to
+            (it embeds a hash of the served field set, the serial number and an
+            expiry). The terminal must send this value unchanged in its
+            `POST /v1/terminals/{serialNumber}/onboard` request. The API uses the value to
             validate the submitted data against the same field set. The token
             is stateless: the backend verifies its signature
             and hash without any stored session. Treat as opaque — do not parse.
@@ -731,7 +799,7 @@ components:
           type: string
           format: uuid
           x-go-type: string
-          description: Server-issued terminal identifier.
+          description: Server-issued terminal identifier. Must be the terminal of the API key.
           example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
         requestId:
           type: string
@@ -944,8 +1012,8 @@ components:
           format: uuid
           x-go-type: string
           description: |
-            Server-issued terminal identifier. Must be the terminal that sent
-            `/v1/transactions/authorize`.
+            Server-issued terminal identifier. Must be the terminal of the API
+            key, and the one that sent `/v1/transactions/authorize`.
           example: 9d2f7c10-5e3a-4b1f-8c2d-6e7f8a9b0c1d
         outcome:
           $ref: '#/components/schemas/FinalizeOutcome'
