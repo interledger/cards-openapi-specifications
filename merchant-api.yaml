@@ -70,6 +70,9 @@ tags:
     description: |
       Register known POS manufacturer/model combinations used to validate
       terminal registration and BDK storage.
+  - name: webhook
+    description: |
+      Notifications from the Open Payments provider.
 
 paths:
   /v1/manufacturer-models:
@@ -528,6 +531,40 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /v1/webhooks/open-payments:
+    post:
+      summary: Receive Open Payments notification
+      operationId: receiveOpenPaymentsWebhook
+      tags:
+        - webhook
+      description: |
+        The Open Payments provider sends payment notifications here.
+
+        The Merchant API acts on `payment_intent.completed` for an incoming
+        payment it created for a card transaction. It matches the
+        transaction by the `requestId` in the payment intent's metadata.
+        This includes a transaction whose outgoing payment the Merchant API
+        reported as failed, because the payment may have been created anyway.
+        It acknowledges every other notification without acting on it.
+
+        Repeating a notification returns `204` again.
+      requestBody:
+        required: true
+        description: The notification.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenPaymentsWebhook'
+      responses:
+        '204':
+          description: The notification is accepted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/WebhookConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
   parameters:
     MerchantId:
@@ -701,6 +738,25 @@ components:
                 title: Invalid State Transition
                 status: 409
                 detail: invalid status transition
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    WebhookConflict:
+      description: |
+        The notification can't be applied to the transaction:
+        - `payment-not-completable`: the transaction has no payment to
+          complete.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            paymentNotCompletable:
+              summary: The transaction has no payment to complete
+              value:
+                type: tag:interledger.org,2026:problems/payment-not-completable
+                title: Payment not completable
+                status: 409
+                detail: transaction has no payment to complete
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     InternalError:
@@ -1259,6 +1315,36 @@ components:
           maxLength: 2
           pattern: '^[A-Z]{2}$'
           example: SI
+
+    OpenPaymentsWebhook:
+      type: object
+      description: A notification from the Open Payments provider.
+      required:
+        - id
+        - type
+        - data
+      properties:
+        id:
+          type: string
+          description: Identifier of the notification.
+        type:
+          type: string
+          description: Notification type, for example `payment_intent.completed`.
+          example: payment_intent.completed
+        data:
+          $ref: '#/components/schemas/OpenPaymentsWebhookData'
+
+    OpenPaymentsWebhookData:
+      type: object
+      description: The payment intent the notification is about.
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          description: Identifier of the payment intent.
+        metadata:
+          description: The payment intent's metadata, as given when it was created.
 
     Problem:
       type: object
