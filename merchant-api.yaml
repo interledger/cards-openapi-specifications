@@ -538,14 +538,21 @@ paths:
       tags:
         - webhook
       description: |
-        The Open Payments provider sends payment notifications here.
+        The Open Payments provider sends payment notifications here, in the
+        same envelope it sends to the wallet provider: `id`, `type` and
+        `data`. For `payment_intent.completed`, `data` is the payment intent,
+        including the `metadata` it was created with.
 
-        The Merchant API acts on `payment_intent.completed` for an incoming
-        payment it created for a card transaction. It matches the
-        transaction by the `requestId` in the payment intent's metadata.
-        This includes a transaction whose outgoing payment the Merchant API
-        reported as failed, because the payment may have been created anyway.
-        It acknowledges every other notification without acting on it.
+        When the Merchant API creates the incoming payment for a card
+        transaction, it puts the transaction's `requestId` in the metadata.
+        A `requestId` in `data.metadata` therefore marks a card payment. The
+        Merchant API completes the transaction with that `requestId`. This
+        includes a transaction whose outgoing payment it reported as failed,
+        because the payment may have been created anyway.
+
+        Anything else gets `204` without action: other notification types,
+        payment intents without a `requestId`, and a `requestId` the Merchant
+        API does not know.
 
         Repeating a notification returns `204` again.
       requestBody:
@@ -1344,7 +1351,9 @@ components:
           type: string
           description: Identifier of the payment intent.
         metadata:
-          description: The payment intent's metadata, as given when it was created.
+          description: |
+            The payment intent's metadata, as given when it was created. A
+            card payment's carries the transaction's `requestId`.
 
     Problem:
       type: object
