@@ -70,6 +70,9 @@ tags:
     description: |
       Register known POS manufacturer/model combinations used to validate
       terminal registration and BDK storage.
+  - name: webhook
+    description: |
+      Notifications from the Open Payments provider.
 
 paths:
   /v1/manufacturer-models:
@@ -528,6 +531,47 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /v1/webhooks/open-payments:
+    post:
+      summary: Receive Open Payments notification
+      operationId: receiveOpenPaymentsWebhook
+      tags:
+        - webhook
+      description: |
+        The Open Payments provider sends payment notifications here, in the
+        same envelope it sends to the wallet provider: `id`, `type` and
+        `data`. For `payment_intent.completed`, `data` is the payment intent,
+        including the `metadata` it was created with.
+
+        When the Merchant API creates the incoming payment for a card
+        transaction, it puts the transaction's `requestId` in the metadata.
+        A `requestId` in `data.metadata` therefore marks a card payment. The
+        Merchant API completes the transaction with that `requestId`. This
+        includes a transaction whose outgoing payment it reported as failed,
+        because the payment may have been created anyway.
+
+        Anything else gets `204` without action: other notification types,
+        payment intents without a `requestId`, and a `requestId` the Merchant
+        API does not know.
+
+        Repeating a notification returns `204` again.
+      requestBody:
+        required: true
+        description: The notification.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenPaymentsWebhook'
+      responses:
+        '204':
+          description: The notification is accepted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/WebhookConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
   parameters:
     MerchantId:
@@ -701,6 +745,25 @@ components:
                 title: Invalid State Transition
                 status: 409
                 detail: invalid status transition
+                instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
+
+    WebhookConflict:
+      description: |
+        The notification can't be applied to the transaction:
+        - `payment-not-completable`: the transaction has no payment to
+          complete.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            paymentNotCompletable:
+              summary: The transaction has no payment to complete
+              value:
+                type: tag:interledger.org,2026:problems/payment-not-completable
+                title: Payment not completable
+                status: 409
+                detail: transaction has no payment to complete
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     InternalError:
@@ -1259,6 +1322,38 @@ components:
           maxLength: 2
           pattern: '^[A-Z]{2}$'
           example: SI
+
+    OpenPaymentsWebhook:
+      type: object
+      description: A notification from the Open Payments provider.
+      required:
+        - id
+        - type
+        - data
+      properties:
+        id:
+          type: string
+          description: Identifier of the notification.
+        type:
+          type: string
+          description: Notification type, for example `payment_intent.completed`.
+          example: payment_intent.completed
+        data:
+          $ref: '#/components/schemas/OpenPaymentsWebhookData'
+
+    OpenPaymentsWebhookData:
+      type: object
+      description: The payment intent the notification is about.
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          description: Identifier of the payment intent.
+        metadata:
+          description: |
+            The payment intent's metadata, as given when it was created. A
+            card payment's carries the transaction's `requestId`.
 
     Problem:
       type: object
