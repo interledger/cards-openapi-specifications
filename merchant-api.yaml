@@ -397,9 +397,11 @@ paths:
         This call only creates the terminal *record* (serial number,
         manufacturer, model, EMV kernel). The supplied manufacturer/model
         must already be registered via `POST /v1/manufacturer-models`.
-        The device does the onboarding with `POST /v1/terminals/onboard`
-        (see `merchant-pos-api.yaml`). The onboarding submits the merchant
-        data. The API then links the device to its merchant.
+        The terminal is created `PROVISIONED`. The device does the onboarding
+        with `POST /v1/terminals/{serialNumber}/onboard` (see
+        `merchant-pos-api.yaml`). The onboarding submits the merchant data. The
+        API then links the device to its merchant, gives it its API key and
+        makes the terminal `ACTIVE`.
 
         The terminal's `serialNumber` must be unique within the system.
       requestBody:
@@ -481,13 +483,17 @@ paths:
 
         Status transitions are validated:
 
-        | From      | Allowed transitions   |
-        |-----------|-----------------------|
-        | `ACTIVE`    | `SUSPENDED`, `REVOKED` |
-        | `SUSPENDED` | `ACTIVE`, `REVOKED`    |
-        | `REVOKED`   | *(terminal state)*    |
+        | From          | Allowed transitions    |
+        |---------------|------------------------|
+        | `PROVISIONED` | `REVOKED`              |
+        | `ACTIVE`      | `SUSPENDED`, `REVOKED` |
+        | `SUSPENDED`   | `ACTIVE`, `REVOKED`    |
+        | `REVOKED`     | *(terminal state)*     |
 
-        Invalid transitions return `409 Conflict`.
+        Invalid transitions return `409 Conflict`. Only onboarding makes a
+        `PROVISIONED` terminal `ACTIVE`, and only
+        `POST /v1/terminals/{terminalId}/reset` makes a terminal `PROVISIONED`
+        again. A `REVOKED` terminal's API key stops working.
       tags:
         - terminal
       requestBody:
@@ -518,7 +524,7 @@ paths:
       tags:
         - terminal
       description: |
-        Soft-delete a terminal. The associated certificate is revoked
+        Soft-delete a terminal. Its API key is revoked
         and the device will no longer be able to authenticate. Historical
         records are preserved for audit purposes.
       responses:
@@ -528,6 +534,36 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/terminals/{terminalId}/reset:
+    parameters:
+      - $ref: '#/components/parameters/TerminalId'
+    post:
+      summary: Reset terminal
+      operationId: resetTerminal
+      tags:
+        - terminal
+      description: |
+        Return an `ACTIVE` or `SUSPENDED` terminal to `PROVISIONED` and revoke
+        its API key, so that the device can be onboarded again. Use it when the
+        key is lost or leaked.
+
+        A terminal in another status returns `409 Conflict`.
+      responses:
+        '200':
+          description: Terminal reset; returns the new representation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Terminal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -1187,7 +1223,7 @@ components:
             |-------------|----------------------------------------------------------|
             | `ACTIVE`    | Terminal is operational and may transact.                |
             | `SUSPENDED` | Temporarily disabled; can be reactivated.                |
-            | `REVOKED`   | Permanently disabled; certificate is revoked. Terminal state. |
+            | `REVOKED`   | Permanently disabled; API key is revoked. Terminal state. |
           enum: [ACTIVE, SUSPENDED, REVOKED]
           example: SUSPENDED
 
@@ -1224,8 +1260,16 @@ components:
         status:
           type: string
           x-go-type: string
-          description: Current lifecycle status of the terminal.
-          enum: [ACTIVE, SUSPENDED, REVOKED]
+          description: |
+            Current lifecycle status of the terminal.
+
+            | Value         | Meaning                                        |
+            |---------------|------------------------------------------------|
+            | `PROVISIONED` | Registered, not onboarded; has no API key.     |
+            | `ACTIVE`      | Onboarded and may take payments.               |
+            | `SUSPENDED`   | Temporarily may not take payments; keeps its API key. |
+            | `REVOKED`     | Permanently disabled; API key is revoked.      |
+          enum: [PROVISIONED, ACTIVE, SUSPENDED, REVOKED]
           example: ACTIVE
         createdAt:
           type: string
