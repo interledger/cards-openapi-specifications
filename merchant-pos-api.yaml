@@ -423,19 +423,19 @@ components:
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
 
     Conflict:
-      description: The definition token is expired, a newer form definition replaces it, or the terminal is not awaiting onboarding.
+      description: The definition token does not match the current form definition, or the terminal is not awaiting onboarding.
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
           examples:
-            definitionExpired:
-              summary: Definition token is expired
+            definitionChanged:
+              summary: Form definition has changed
               value:
                 type: about:blank
                 title: Conflict
                 status: 409
-                detail: definition token expired
+                detail: onboarding form has changed
                 instance: 07cf97fa-7c93-4d22-8ad5-eba4116672e6
             terminalNotOnboardable:
               summary: Terminal is not awaiting onboarding
@@ -507,7 +507,7 @@ components:
     OnboardingSubmissionExample:
       summary: Example submission
       value:
-        definitionToken: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
+        definitionToken: "9f2c8a1e4b7d03c6a5e8f1b2d4c7a0e3b6f9c2d5a8e1b4f7c0a3d6e9b2c5f8a1"
         data:
           businessName: Interledger Foundation
           legalEntityName: Interledger Foundation
@@ -528,7 +528,7 @@ components:
       summary: Example onboarding form definition
       value:
         version: "2026-06-01"
-        definitionToken: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
+        definitionToken: "9f2c8a1e4b7d03c6a5e8f1b2d4c7a0e3b6f9c2d5a8e1b4f7c0a3d6e9b2c5f8a1"
         title: Merchant onboarding
         fields:
           - key: businessName
@@ -621,18 +621,15 @@ components:
       properties:
         definitionToken:
           type: string
-          x-oapi-codegen-extra-tags:
-            sensitive: credential
+          minLength: 1
           description: >
             The `definitionToken` from
             `GET /v1/terminals/{serialNumber}/onboard`, for the form
-            that the terminal shows. The API verifies the signature and the
-            expiry of the token, and that the token was issued for this serial
-            number. The API then validates `data` against the field
-            set of the token. If the token is missing or not valid, the API
-            returns 400. If the token is expired or replaced, the API returns
-            409. Get the definition again, then submit again.
-          example: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
+            that the terminal shows. If the token is missing, the API returns
+            400. If it does not match the current form definition for this
+            terminal, the API returns 409. Get the definition again, then
+            submit again.
+          example: "9f2c8a1e4b7d03c6a5e8f1b2d4c7a0e3b6f9c2d5a8e1b4f7c0a3d6e9b2c5f8a1"
         data:
           type: object
           x-oapi-codegen-extra-tags:
@@ -754,17 +751,13 @@ components:
           example: "2026-06-01"
         definitionToken:
           type: string
-          x-oapi-codegen-extra-tags:
-            sensitive: credential
           description: >
-            Opaque, server-signed token representing this exact form definition
-            (it embeds a hash of the served field set, the serial number and an
-            expiry). The terminal must send this value unchanged in its
-            `POST /v1/terminals/{serialNumber}/onboard` request. The API uses the value to
-            validate the submitted data against the same field set. The token
-            is stateless: the backend verifies its signature
-            and hash without any stored session. Treat as opaque — do not parse.
-          example: "eyJhbGciOiJIUzI1NiJ9.eyJoIjoiOWYyYzhhMSIsImV4cCI6MTc4MDM0NjQwMH0.q8Xr2bV1nKpZ"
+            Opaque value that identifies this exact form definition. It is not
+            a secret and does not expire. The terminal must send this value
+            unchanged in its `POST /v1/terminals/{serialNumber}/onboard`
+            request, so that the API can check that the terminal submits the
+            form that is current. Treat as opaque — do not parse.
+          example: "9f2c8a1e4b7d03c6a5e8f1b2d4c7a0e3b6f9c2d5a8e1b4f7c0a3d6e9b2c5f8a1"
         title:
           type: string
           description: Optional human-readable form title.
